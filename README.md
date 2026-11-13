@@ -20,6 +20,40 @@ RedisLens 是一款基于 **Go + Wails v2 + Vue 3** 的 Windows 桌面版 Redis 
 | 安全与审计 | 凭据 AES-256-GCM 本地加密（密钥机器绑定）、危险命令白名单拦截、操作审计日志（月度轮转，留存 ≥ 90 天）、回收站（删除键 DUMP 备份一键恢复） |
 | 体验 | 浅色/深色主题一键切换、三档列表密度、Ctrl+K 全局搜索（键/命令/模块） |
 
+## 界面预览
+
+<table>
+  <tr>
+    <td><img src="docs/home_page.png" alt="欢迎页" width="460"/></td>
+    <td><img src="docs/dashboard.png" alt="监控仪表盘" width="460"/></td>
+  </tr>
+  <tr>
+    <td align="center">欢迎页</td>
+    <td align="center">监控仪表盘</td>
+  </tr>
+  <tr>
+    <td><img src="docs/connect.png" alt="连接管理" width="460"/></td>
+    <td><img src="docs/command.png" alt="命令行控制台" width="460"/></td>
+  </tr>
+  <tr>
+    <td align="center">连接管理</td>
+    <td align="center">命令行控制台</td>
+  </tr>
+  <tr>
+    <td><img src="docs/export.png" alt="导入导出" width="460"/></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td align="center">导入导出与批量删除</td>
+    <td></td>
+  </tr>
+</table>
+
+## 产品文档
+
+完整产品需求文档（PRD）：[`docs/RedisLens产品需求文档PRD.docx`](docs/RedisLens产品需求文档PRD.docx)
+（版权所有 © 2026 flairamos）
+
 ## 技术栈
 
 - **后端**：Go 1.26、[go-redis v9](https://github.com/redis/go-redis)、[Wails v2](https://wails.io)、golang.org/x/crypto（SSH 隧道）

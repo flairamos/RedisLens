@@ -1,0 +1,86 @@
+# RedisLens 发布流水线：推送 v* 标签自动构建并发布 Release
+# 产物：build/bin/RedisLens.exe（便携版）+ RedisLens-amd64-installer.exe（NSIS 安装包）
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: # 支持手动触发（仅构建验证，不发布）
+
+permissions:
+  contents: write # 创建 Release 需要
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: ver
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "is_tag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0-dev" >> "$GITHUB_OUTPUT"
+            echo "is_tag=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+
+      - name: Sync app version from tag
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('wails.json', 'utf8'));
+            cfg.info = cfg.info || {};
+            cfg.info.productVersion = '${{ steps.ver.outputs.version }}';
+            fs.writeFileSync('wails.json', JSON.stringify(cfg, null, 2) + '\n');
+            console.log('productVersion =', cfg.info.productVersion);
+          "
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Build (frontend + backend + installer)
+        run: wails build -platform windows/amd64 -nsis
+
+      - name: Verify artifacts
+        shell: bash
+        run: |
+          ls -la build/bin/
+          test -f build/bin/RedisLens.exe || { echo "缺少便携版 exe"; exit 1; }
+          if [[ "${{ steps.ver.outputs.is_tag }}" == "true" ]]; then
+            test -f build/bin/RedisLens-amd64-installer.exe || { echo "缺少安装包"; exit 1; }
+          fi
+
+      - name: Create Release
+        if: steps.ver.outputs.is_tag == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/bin/RedisLens.exe
+            build/bin/RedisLens-amd64-installer.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true
