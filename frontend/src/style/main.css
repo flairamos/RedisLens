@@ -1,0 +1,237 @@
+/* ============================================================
+   RedisLens 设计体系
+   基底：中性灰白；主色：Redis 红 #DC382D（仅品牌/关键操作）
+   圆角 8px / 1px 弱描边 / 8px 间距网格 / 三档密度
+   ============================================================ */
+
+:root {
+  /* 功能色：数据类型 */
+  --t-string: #dc382d;
+  --t-hash: #3b82f6;
+  --t-list: #22c55e;
+  --t-set: #a855f7;
+  --t-zset: #f59e0b;
+  --t-stream: #06b6d4;
+  --t-json: #ec4899;
+  --t-none: #94a3b8;
+
+  --red: #dc382d;
+  --red-hover: #c02c22;
+  --green: #16a34a;
+  --amber: #d97706;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --topbar-h: 48px;
+  --sidenav-w: 260px;
+  --detail-w: 320px;
+
+  --font-ui: 'Inter', 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, 'Cascadia Mono', monospace;
+}
+
+/* 浅色主题（默认） */
+:root, [data-theme='light'] {
+  --bg: #f7f8fa;
+  --bg-panel: #ffffff;
+  --bg-hover: #eef0f4;
+  --bg-active: #e6e9ef;
+  --bg-input: #ffffff;
+  --border: #e4e7ee;
+  --border-strong: #d3d8e2;
+  --text: #1f2430;
+  --text-2: #5b6472;
+  --text-3: #9aa3b2;
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.07), 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 8px 30px rgba(16, 24, 40, 0.14);
+  --accent: #dc382d;
+  --accent-soft: rgba(220, 56, 45, 0.09);
+  --selection: rgba(220, 56, 45, 0.12);
+  --danger-bg: #fdecec;
+  --scroll-thumb: #c9cfda;
+}
+
+/* 深色主题 */
+[data-theme='dark'] {
+  --bg: #1e222a;
+  --bg-panel: #262b34;
+  --bg-hover: #2e3440;
+  --bg-active: #363d4c;
+  --bg-input: #1a1e26;
+  --border: #333a46;
+  --border-strong: #414957;
+  --text: #e6e9ef;
+  --text-2: #a8b0bd;
+  --text-3: #6f7787;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --accent: #e5443a;
+  --accent-soft: rgba(229, 68, 58, 0.14);
+  --selection: rgba(229, 68, 58, 0.2);
+  --danger-bg: rgba(229, 68, 58, 0.12);
+  --scroll-thumb: #454d5c;
+}
+
+/* 密度三档 */
+[data-density='compact'] { --row-h: 28px; --gap: 8px; --pad: 8px; --fs: 12.5px; }
+[data-density='comfortable'] { --row-h: 34px; --gap: 12px; --pad: 12px; --fs: 13.5px; }
+[data-density='spacious'] { --row-h: 42px; --gap: 16px; --pad: 16px; --fs: 14px; }
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--fs, 13.5px);
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+::selection { background: var(--selection); }
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input:disabled, textarea:disabled, select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 通用按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--border-strong); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--red-hover); border-color: var(--red-hover); }
+.btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.danger-ghost { background: transparent; border-color: var(--red); color: var(--red); }
+.btn.danger-ghost:hover:not(:disabled) { background: var(--danger-bg); }
+.btn.sm { padding: 3px 10px; font-size: 12px; }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover:not(:disabled) { background: var(--bg-hover); }
+
+/* 卡片 */
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* 标签 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  font-family: var(--font-mono);
+}
+
+/* 表格 */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+  z-index: 1;
+}
+.tbl td { padding: 6px 10px; border-bottom: 1px solid var(--border); word-break: break-all; }
+.tbl tr:hover td { background: var(--bg-hover); }
+.tbl tr.selected td { background: var(--accent-soft); }
+.tbl tr.clickable { cursor: pointer; }
+
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+
+/* 布局工具 */
+.flex { display: flex; align-items: center; }
+.grow { flex: 1; min-width: 0; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 空态 */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-3);
+  padding: 48px 24px;
+  text-align: center;
+}
+.empty svg { opacity: 0.5; }
+
+/* 代码/JSON 高亮 */
+.code-view {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  tab-size: 2;
+}
+.j-key { color: #7c9cf5; }
+.j-str { color: #6fbf73; }
+.j-num { color: #e5a45c; }
+.j-bool { color: #c678dd; }
+.j-null { color: #9aa3b2; }
+
+/* 动画 */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeIn 0.18s ease; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}

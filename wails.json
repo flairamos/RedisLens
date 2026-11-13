@@ -1,0 +1,26 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "RedisLens",
+  "outputfilename": "RedisLens",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "RedisLens",
+    "email": "redislens@example.com"
+  },
+  "info": {
+    "productName": "RedisLens",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026 RedisLens",
+    "comments": "Redis 可视化管理工具 - 让数据看得见、改得动、管得住"
+  },
+  "nsis": {
+    "languages": [
+      "SimpChinese",
+      "English"
+    ],
+    "displayLanguageSelector": false
+  }
+}

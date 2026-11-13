@@ -1,0 +1,17 @@
+# 构建产物（发布时作为 Release 资产上传，不入库）
+build/bin/
+frontend/node_modules/
+frontend/dist/
+
+# 产品内部文档（PRD 含内部资料标记，不入库）
+RedisLens产品需求文档PRD.docx
+*.docx
+
+# 日志与临时文件
+*.log
+.DS_Store
+Thumbs.db
+
+# wails 构建中间物
+build/windows/installer/tmp/
+frontend/package.json.md5
