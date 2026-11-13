@@ -61,7 +61,19 @@ jobs:
           "
 
       - name: Install NSIS
-        run: choco install nsis -y --no-progress
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          # choco 安装的 NSIS 不在 PATH 上，而 wails 仅通过 PATH 查找 makensis，
+          # 必须显式追加，否则 wails 只警告并跳过安装包构建
+          $nsisBin = "${env:ProgramFiles(x86)}\NSIS\Bin"
+          if (-not (Test-Path "$nsisBin\makensis.exe")) {
+            $found = Get-ChildItem "C:\Program Files*\NSIS*\*\makensis.exe", "C:\Program Files*\NSIS\makensis.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $found) { Write-Host "::error::makensis.exe not found after choco install"; exit 1 }
+            $nsisBin = $found.DirectoryName
+          }
+          Add-Content $env:GITHUB_PATH $nsisBin
+          Write-Host "NSIS added to PATH: $nsisBin"
 
       - name: Build (frontend + backend + installer)
         run: wails build -platform windows/amd64 -nsis
