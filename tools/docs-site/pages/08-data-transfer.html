@@ -1,0 +1,180 @@
+<p class="lead">
+  导入导出用于备份、跨实例迁移与批量清理。JSON 导出包含 Redis <code>DUMP</code> 的
+  Base64 保真数据，可通过 <code>RESTORE</code> 恢复任意受支持类型；CSV 只导出键清单，
+  适合做报表与审计对照。
+</p>
+
+<div class="callout info">
+  <div class="callout-title">作用范围</div>
+  所有操作都作用于<strong>当前连接 + 当前 DB</strong>，按匹配模式与类型筛选。
+  单次导出 / 导入的超时上限为 10 分钟；集群模式下扫描通常只覆盖其中一个节点。
+</div>
+
+<figure class="shot">
+  <img src="export.png" alt="RedisLens 导入导出与批量删除界面" width="2858" height="1789" loading="lazy">
+  <figcaption>导出、导入与批量删除集中在同一页；删除需要先预览并输入匹配模式确认。</figcaption>
+</figure>
+
+<h2 id="export-json">导出 JSON（含值）</h2>
+
+<p>
+  在「导入导出」页填写匹配模式与类型，点击「导出 JSON（含值）」，选择保存路径。
+  默认文件名 <code>redislens-export.json</code>。
+</p>
+
+<p>
+  文件是 <strong>JSONL</strong> 格式：第一行是文件头，之后每行是一条键记录。
+  这样做便于流式处理，避免把整个文件构造成一个巨大的 JSON 数组。
+</p>
+
+<pre><code>{"format":"RedisLens-export","version":1,"count":2}
+{"key":"user:1001","type":"hash","pttl":-1,"dump":"AAAB8wAAA..."}
+{"key":"session:abc","type":"string","pttl":3600000,"dump":"AAAB9A...","value":"hello"}</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>字段</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>format</code></td><td>固定为 <code>RedisLens-export</code>，导入时用于校验。</td></tr>
+      <tr><td><code>version</code></td><td>导出格式版本，当前为 1。</td></tr>
+      <tr><td><code>source</code></td><td>导出时连接的名称，仅作来源标识。</td></tr>
+      <tr><td><code>exportedAt</code></td><td>导出时间（ISO 8601）。</td></tr>
+      <tr><td><code>count</code></td><td>记录条数。</td></tr>
+      <tr><td><code>key</code> / <code>type</code></td><td>键名与归一化后的类型。</td></tr>
+      <tr><td><code>pttl</code></td><td>剩余过期时间（毫秒）；<code>-1</code> 表示永久。</td></tr>
+      <tr><td><code>dump</code></td><td><code>DUMP</code> 结果的 Base64，用于保真恢复。</td></tr>
+      <tr><td><code>value</code></td><td>仅 string / json 类型提供的人类可读值，作为 <code>RESTORE</code> 失败时的回退。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="export-notes">导出注意事项</h3>
+
+<ul>
+  <li>导出基于 <code>SCAN</code>，遍历期间的新增 / 删除可能导致结果不是严格快照。</li>
+  <li>RedisLens 会先把记录收集到内存再写文件；超大键空间请按前缀分批导出，避免内存与 10 分钟超时问题。</li>
+  <li>导出不会修改数据；只读模式下也可以导出。</li>
+  <li>导出成功后写入一条 <code>export</code> 审计记录（文件名与匹配模式）。</li>
+</ul>
+
+<h2 id="export-csv">导出 CSV 清单</h2>
+
+<p>
+  CSV 是轻量键清单，不含值，不能用于恢复。表头固定为：
+</p>
+
+<pre><code>key,type,ttl_ms,memory_bytes
+"user:1001",hash,0,2048
+"session:abc",string,3600000,64</code></pre>
+
+<ul>
+  <li>每个键一行，字段为键名、类型、TTL（毫秒）与 <code>MEMORY USAGE</code> 字节数。</li>
+  <li>CSV 中的 TTL 列对永久键显示 <code>0</code>；需要严格区分「永久 / 剩余时间」时，以 JSON 导出的 <code>pttl</code>（<code>-1</code> 表示永久）为准。</li>
+  <li>默认文件名 <code>redislens-keys.csv</code>。</li>
+  <li>适合在 Excel / 脚本中做键分布分析；导入功能<strong>只接受</strong> RedisLens 的 JSON 导出文件，不接受 CSV。</li>
+</ul>
+
+<h2 id="import">导入</h2>
+
+<p>
+  点击「选择文件并导入」，选择一个由 RedisLens 导出的 JSON 文件。
+  导入会先解析并校验文件头，然后逐条恢复：
+</p>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">校验格式</span>
+    文件头必须是 <code>RedisLens-export</code>；否则直接报错「not a RedisLens export file」。
+  </li>
+  <li>
+    <span class="step-title">按覆盖策略处理</span>
+    勾选「覆盖已存在的键」时使用 <code>RESTORE REPLACE</code>；
+    未勾选时先 <code>EXISTS</code>，已存在则跳过并计入「跳过」。
+  </li>
+  <li>
+    <span class="step-title">恢复值，必要时回退</span>
+    优先用 <code>RESTORE</code> 恢复 DUMP（保留类型、编码与 TTL）。
+    如果 <code>RESTORE</code> 失败且记录带有人类可读值，则对 string 用 <code>SET</code>、
+    对 json 用 <code>JSON.SET</code> 重建；其他类型计为失败。
+  </li>
+  <li>
+    <span class="step-title">查看报告</span>
+    页面显示总计、成功、跳过、失败与耗时，并提示导入了多少键。
+  </li>
+</ol>
+
+<div class="callout warn">
+  <div class="callout-title">跨版本 / 跨模块迁移不一定 100% 成功</div>
+  <code>DUMP</code> / <code>RESTORE</code> 受 Redis 版本与模块影响。目标实例版本过低、
+  缺少 RedisJSON 等模块，或 DUMP 编码不兼容时，部分记录会失败。
+  这类失败会如实计入报告，不会静默当成成功。
+</div>
+
+<ul>
+  <li>导入会将整个文件读入内存，超大文件需要预留足够内存。</li>
+  <li>只读模式下导入按钮禁用，后端也会拒绝。</li>
+  <li>导入成功写入一条 <code>import</code> 审计记录，包含成功 / 跳过 / 失败计数。</li>
+  <li>覆盖模式会直接替换同名键，操作前建议先导出备份。</li>
+</ul>
+
+<h2 id="batch-delete">批量删除</h2>
+
+<p>
+  「批量删除」先扫描匹配键并展示预览，确认后才执行删除。流程被刻意拆成三步，
+  避免一次误输入清空整个库。
+</p>
+
+<h3 id="preview">1. 预览</h3>
+
+<ul>
+  <li>填写匹配模式（必填）并可选类型筛选，点击「预览匹配键」。</li>
+  <li>预览会扫描整个 DB，统计匹配总数（最多统计到 5,000,000 个），
+      并最多保留 <strong>1000</strong> 个键作为明细样本。</li>
+  <li>预览不会删除任何数据。</li>
+</ul>
+
+<h3 id="confirm">2. 确认</h3>
+
+<p>
+  点击「确认删除」后，会要求输入<strong>完整的匹配模式</strong>（例如 <code>cache:temp:*</code>）
+  才能继续。输入不一致时确认按钮保持禁用。
+</p>
+
+<h3 id="execute">3. 执行</h3>
+
+<ul>
+  <li>删除针对本次预览中的键执行（最多 1000 个），每 500 个一批。</li>
+  <li>每个键先 <code>DUMP</code> 备份到回收站，再 <code>UNLINK</code>；备份失败会中止该键的删除并报错。</li>
+  <li>如果匹配总数超过 1000，请缩小匹配模式分批处理，不要把「预览总数」当作本次实际删除量。</li>
+  <li>删除完成后写入 <code>key_delete</code> 审计记录，级别为 <code>warn</code>。</li>
+</ul>
+
+<div class="callout danger">
+  <div class="callout-title">回收站容量有限</div>
+  回收站上限为 <strong>100 条 / 64 MB</strong>，超出后自动淘汰最旧条目。
+  批量删除数百个键时，早期的备份可能已被淘汰，无法全部恢复。
+  大批量清理前，请先用 JSON 导出做完整备份。
+</div>
+
+<h2 id="migration">推荐的迁移流程</h2>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">只读源实例</span>
+    为源连接开启只读模式，避免迁移过程中数据继续变化。
+  </li>
+  <li>
+    <span class="step-title">按前缀分批导出</span>
+    用 <code>user:*</code>、<code>order:*</code> 等模式分批导出，降低单文件体积与超时风险。
+  </li>
+  <li>
+    <span class="step-title">在目标实例导入</span>
+    先在小范围键上验证类型、TTL 与模块兼容性，再全量导入；根据需要开启覆盖。
+  </li>
+  <li>
+    <span class="step-title">核对报告与抽样</span>
+    检查成功 / 失败计数，并在数据浏览中抽查 Hash、Stream、JSON 等复杂类型。
+  </li>
+</ol>

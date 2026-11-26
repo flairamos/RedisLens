@@ -1,0 +1,222 @@
+<p class="lead">
+  本页面向希望从源码构建、二次开发或维护文档站的开发者。应用使用 Go + Wails v2，
+  前端为 Vue 3 + TypeScript + Vite；文档站是零依赖的静态 HTML，由
+  <code>tools/docs-site</code> 生成到 <code>docs/</code>。
+</p>
+
+<h2 id="stack">技术栈与目录</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>层</th><th>技术</th><th>位置</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>桌面外壳 / 绑定层</td><td>Wails v2、Go 1.26</td><td><code>main.go</code>、<code>app.go</code></td></tr>
+      <tr><td>Redis 服务层</td><td>go-redis v9、SSH 隧道、TLS</td><td><code>internal/rds</code></td></tr>
+      <tr><td>配置与凭据</td><td>JSON + AES-256-GCM + HKDF</td><td><code>internal/config</code></td></tr>
+      <tr><td>审计</td><td>JSONL 月度轮转</td><td><code>internal/audit</code></td></tr>
+      <tr><td>命令分类</td><td>读 / 写 / 危险 / 阻塞</td><td><code>internal/security</code></td></tr>
+      <tr><td>前端</td><td>Vue 3、TypeScript、Vite、ECharts 5</td><td><code>frontend/src</code></td></tr>
+      <tr><td>文档站</td><td>静态 HTML/CSS/JS + Node 构建脚本</td><td><code>tools/docs-site</code> → <code>docs/</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<pre><code>RedisLens/
+├── main.go / app.go        # Wails 入口与绑定层
+├── internal/
+│   ├── config/             # 配置存储 + 凭据加密
+│   ├── rds/                # 连接、键、监控、控制台、分析、导入导出、PubSub、拓扑
+│   ├── audit/              # 审计日志（JSONL 月度轮转）
+│   └── security/           # 命令分类与危险命令拦截
+├── frontend/               # Vue 3 前端
+├── build/                  # 构建产物（exe / NSIS 安装包）
+├── docs/                   # GitHub Pages 站点（构建输出）
+└── tools/
+    ├── docs-site/          # 文档源片段与生成脚本
+    └── genlogo/            # 品牌图标生成器</code></pre>
+
+<h2 id="prerequisites">环境要求</h2>
+
+<ul>
+  <li>Go <strong>1.26+</strong></li>
+  <li>Node.js <strong>22+</strong> 与 npm</li>
+  <li>Wails CLI <strong>v2.10.1</strong></li>
+  <li>Windows 10 / 11 x64 与 WebView2</li>
+  <li>构建 NSIS 安装包时，额外需要 <code>makensis</code> 在 <code>PATH</code> 中</li>
+</ul>
+
+<pre><code>go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+wails doctor</code></pre>
+
+<h2 id="dev">本地开发</h2>
+
+<pre><code># 安装前端依赖
+cd frontend
+npm ci
+cd ..
+
+# 开发模式：前端热更新 + Go 后端
+wails dev</code></pre>
+
+<p>
+  <code>wails dev</code> 会启动 Vite 开发服务器并把资源注入桌面窗口。
+  修改 Go 绑定方法后需要重新编译；前端页面通常热更新。
+</p>
+
+<h2 id="build">生产构建</h2>
+
+<pre><code># 仅可执行文件，产物在 build/bin/
+wails build -platform windows/amd64
+
+# 同时生成 NSIS 安装包（需 makensis）
+wails build -platform windows/amd64 -nsis</code></pre>
+
+<p>
+  构建会先执行前端生产构建，再由 Wails 把 <code>frontend/dist</code> 嵌入二进制。
+  产物为 <code>build/bin/RedisLens.exe</code> 与
+  <code>build/bin/RedisLens-amd64-installer.exe</code>。
+</p>
+
+<h2 id="test">测试</h2>
+
+<pre><code># 单元测试 + 集成测试（自动探测本机 redis-server，无则回退 miniredis）
+go test ./internal/...
+
+# 指定真实 Redis 实例
+REDISLENS_TEST_ADDR=127.0.0.1:6379 go test ./internal/rds</code></pre>
+
+<p>PowerShell 中设置环境变量：</p>
+
+<pre><code>$env:REDISLENS_TEST_ADDR = "127.0.0.1:6379"
+go test ./internal/rds</code></pre>
+
+<p>
+  仓库还使用 <code>gosec</code>、<code>staticcheck</code>、<code>govulncheck</code>
+  做安全与静态检查；发布前建议全部清零。
+</p>
+
+<h2 id="release">发布流程</h2>
+
+<p>
+  <code>.github/workflows/release.yml</code> 在推送 <code>v*</code> 标签时触发，
+  在 <code>windows-latest</code> 上安装 Go / Node / Wails / NSIS，执行
+  <code>wails build -platform windows/amd64 -nsis</code>，并创建 GitHub Release。
+</p>
+
+<pre><code>git tag v1.0.0
+git push origin v1.0.0</code></pre>
+
+<ul>
+  <li>工作流会把标签版本写入 <code>wails.json</code> 的 <code>info.productVersion</code>。</li>
+  <li>发布产物：便携版 <code>RedisLens.exe</code> 与安装包 <code>RedisLens-amd64-installer.exe</code>。</li>
+  <li>手动触发 <code>workflow_dispatch</code> 只做构建验证，不创建 Release。</li>
+</ul>
+
+<h2 id="docs-build">文档站如何生成</h2>
+
+<p>
+  <code>docs/</code> 是 <strong>构建输出目录</strong>，不要直接改其中的 HTML。
+  内容源在 <code>tools/docs-site/pages/</code>，统一布局、导航与搜索索引由
+  <code>tools/docs-site/build.mjs</code> 生成。
+</p>
+
+<pre><code># 修改 tools/docs-site/pages/*.html 或 site.mjs 后执行
+node tools/docs-site/build.mjs</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>路径</th><th>作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>tools/docs-site/site.mjs</code></td><td>站点元信息、导航分组、页面标题与描述。</td></tr>
+      <tr><td><code>tools/docs-site/pages/*.html</code></td><td>每页正文片段，不含页头、侧栏与页脚。</td></tr>
+      <tr><td><code>tools/docs-site/build.mjs</code></td><td>套用布局、补标题锚点、生成搜索索引 / sitemap / robots。</td></tr>
+      <tr><td><code>docs/assets/docs.css</code></td><td>站点样式（浅色 / 深色、响应式、打印）。</td></tr>
+      <tr><td><code>docs/assets/docs.js</code></td><td>主题、移动端导航、目录、代码复制与搜索交互。</td></tr>
+      <tr><td><code>docs/assets/search-index.js</code></td><td>构建生成的全文搜索索引。</td></tr>
+      <tr><td><code>docs/.nojekyll</code></td><td>关闭 GitHub Pages 的 Jekyll 处理。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="add-page">新增一页文档</h3>
+
+<ol class="steps">
+  <li>在 <code>tools/docs-site/pages/</code> 新建 HTML 片段，只写正文（从 <code>&lt;p class="lead"&gt;</code> 开始）。</li>
+  <li>在 <code>site.mjs</code> 的对应分组中登记 <code>file / src / label / title / description</code>。</li>
+  <li>运行 <code>node tools/docs-site/build.mjs</code>，确认输出无报错。</li>
+  <li>本地预览并检查导航、目录与搜索，然后一并提交 <code>tools/</code> 与 <code>docs/</code>。</li>
+</ol>
+
+<h2 id="pages-deploy">部署到 GitHub Pages（Deploy from a branch）</h2>
+
+<p>
+  本站使用「从分支部署」而不是 GitHub Actions 构建。仓库 Settings 中的配置只需做一次：
+</p>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">推送到默认分支</span>
+    确保 <code>docs/index.html</code>、<code>docs/assets/</code> 与 <code>docs/.nojekyll</code>
+    已经提交并推送到 <code>main</code>。
+  </li>
+  <li>
+    <span class="step-title">打开 Pages 设置</span>
+    进入 GitHub 仓库 → <strong>Settings</strong> → <strong>Pages</strong>。
+  </li>
+  <li>
+    <span class="step-title">选择来源</span>
+    <strong>Build and deployment → Source</strong> 选择
+    <strong>Deploy from a branch</strong>。
+  </li>
+  <li>
+    <span class="step-title">选择分支与目录</span>
+    Branch 选择 <code>main</code>，Folder 选择 <code>/docs</code>，点击 <strong>Save</strong>。
+  </li>
+  <li>
+    <span class="step-title">等待首次发布</span>
+    仓库的 <strong>Actions</strong> 页会出现 <code>pages build and deployment</code> 运行记录；
+    完成后访问 <code>https://&lt;用户名&gt;.github.io/&lt;仓库名&gt;/</code>。
+  </li>
+</ol>
+
+<div class="callout info">
+  <div class="callout-title">本站地址</div>
+  按当前仓库配置，地址为
+  <a href="https://flairamos.github.io/RedisLens/" rel="noopener">https://flairamos.github.io/RedisLens/</a>。
+  如果仓库改名或使用自定义域名，请在 <code>site.mjs</code> 中同步 <code>baseUrl</code> 并重新构建。
+</div>
+
+<h3 id="nojekyll">为什么需要 .nojekyll</h3>
+
+<p>
+  「Deploy from a branch」默认会让 Jekyll 处理站点。本站是纯静态 HTML，
+  不需要 Jekyll；在 <code>docs/</code> 根目录放置空的 <code>.nojekyll</code>
+  可以跳过 Jekyll，避免以下划线开头的文件被忽略，并减少构建失败点。
+</p>
+
+<h3 id="deploy-check">部署后检查</h3>
+
+<ul>
+  <li>访问首页，确认样式、Logo 与截图加载正常（资源使用相对路径）。</li>
+  <li>打开任意内页，确认左侧导航、右侧目录与「上一篇 / 下一篇」正常。</li>
+  <li>按 <kbd>Ctrl</kbd> + <kbd>K</kbd> 搜索，确认搜索结果能跳转到对应锚点。</li>
+  <li>访问一个不存在的路径，确认 <code>404.html</code> 生效。</li>
+  <li>如果页面仍是旧版本，等待 Pages 构建完成并强制刷新缓存。</li>
+</ul>
+
+<div class="callout warn">
+  <div class="callout-title">不要同时启用 Actions 部署</div>
+  如果仓库同时存在自定义 Pages Actions 工作流，可能与分支部署互相覆盖。
+  本项目刻意只使用「Deploy from a branch → /docs」这一种方式。
+</div>
+
+<h2 id="license">许可</h2>
+
+<p>
+  RedisLens 以 <strong>Apache-2.0</strong> 许可发布。文档与截图同样遵循该许可，
+  产品 PRD 版权归 © 2026 flairamos 所有。
+</p>

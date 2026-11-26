@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>安全与审计 · RedisLens 文档</title>
+<meta name="description" content="了解凭据本地加密、只读模式、危险命令拦截、审计日志、回收站与数据目录的安全边界。">
+<meta name="theme-color" content="#dc382d">
+<link rel="canonical" href="https://flairamos.github.io/RedisLens/security.html">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/docs.css?v=1.0.0">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RedisLens 文档">
+<meta property="og:title" content="安全与审计 · RedisLens 文档">
+<meta property="og:description" content="了解凭据本地加密、只读模式、危险命令拦截、审计日志、回收站与数据目录的安全边界。">
+<meta property="og:url" content="https://flairamos.github.io/RedisLens/security.html">
+<script>try{var t=localStorage.getItem("redislens-docs-theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="icon-btn menu-btn" type="button" data-menu-toggle aria-label="打开文档导航" aria-expanded="false" aria-controls="docs-sidebar">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+    <a class="brand" href="index.html" aria-label="RedisLens 文档首页">
+      <svg class="brand-logo" viewBox="0 0 132 36" fill="none" role="img" aria-label="RedisLens">
+        <g>
+          <circle cx="16" cy="15" r="10.5" fill="none" stroke="currentColor" stroke-width="3"></circle>
+          <path d="M16 8.2 L21.5 12.1 L16 16 L10.5 12.1 Z" fill="#DC382D"></path>
+          <path d="M16 12.6 L21.5 16.5 L16 20.4 L10.5 16.5 Z" fill="#C02C22"></path>
+          <path d="M16 17 L21.5 20.9 L16 24.8 L10.5 20.9 Z" fill="#A82620"></path>
+          <line x1="24.2" y1="23.2" x2="30" y2="29" stroke="#DC382D" stroke-width="4.2" stroke-linecap="round"></line>
+        </g>
+        <text x="38" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="currentColor" letter-spacing="0.2">Redis</text>
+        <text x="86" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="#DC382D" letter-spacing="0.2">Lens</text>
+      </svg>
+      <span class="brand-badge">Docs</span>
+    </a>
+    <nav class="topnav" aria-label="站点导航">
+      <a href="index.html">文档</a>
+      <a href="getting-started.html">快速开始</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">下载</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <button class="search-trigger" type="button" data-search-open aria-label="搜索文档（Ctrl K）">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+      <span>搜索文档</span>
+      <span class="grow"></span>
+      <kbd>Ctrl K</kbd>
+    </button>
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/flairamos/RedisLens" aria-label="RedisLens GitHub 仓库" title="GitHub" rel="noopener">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.4 0C6.2 2.8 5.1 3.1 5.1 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 3.7 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>
+    </a>
+  </div>
+</header>
+<div class="backdrop" data-backdrop></div>
+<div class="layout">
+
+<aside class="sidebar" id="docs-sidebar" aria-label="文档导航">
+
+    <div class="nav-section">
+      <div class="nav-section-title">开始</div>
+      <a class="nav-link" href="index.html"><span class="nav-dot"></span>产品概览</a>
+      <a class="nav-link" href="getting-started.html"><span class="nav-dot"></span>安装与首次连接</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">使用指南</div>
+      <a class="nav-link" href="connections.html"><span class="nav-dot"></span>连接管理</a>
+      <a class="nav-link" href="browser.html"><span class="nav-dot"></span>数据浏览与编辑</a>
+      <a class="nav-link" href="dashboard.html"><span class="nav-dot"></span>监控仪表盘</a>
+      <a class="nav-link" href="console.html"><span class="nav-dot"></span>命令行控制台</a>
+      <a class="nav-link" href="analysis.html"><span class="nav-dot"></span>键空间分析</a>
+      <a class="nav-link" href="data-transfer.html"><span class="nav-dot"></span>导入导出与批量删除</a>
+      <a class="nav-link" href="pubsub.html"><span class="nav-dot"></span>发布订阅</a>
+      <a class="nav-link" href="topology.html"><span class="nav-dot"></span>实例拓扑</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">参考</div>
+      <a class="nav-link active" href="security.html" aria-current="page"><span class="nav-dot"></span>安全与审计</a>
+      <a class="nav-link" href="settings.html"><span class="nav-dot"></span>设置与快捷键</a>
+      <a class="nav-link" href="faq.html"><span class="nav-dot"></span>常见问题</a>
+      <a class="nav-link" href="development.html"><span class="nav-dot"></span>开发者指南</a>
+    </div>
+  <div class="sidebar-footer">
+    <div>RedisLens v1.0.0 · Apache-2.0</div>
+    <div><a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub 仓库</a> · <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a></div>
+  </div>
+</aside>
+  <div class="content-wrap">
+    <main class="content" id="main">
+      <nav class="breadcrumb" aria-label="面包屑">
+        <a href="index.html">文档</a><span class="sep">/</span><span>参考</span><span class="sep">/</span><span>安全与审计</span>
+      </nav>
+      <h1>安全与审计</h1>
+<p class="lead">
+  RedisLens 是本地桌面工具，安全边界主要由「本机账号、Redis 访问权限与网络路径」决定。
+  产品在凭据存储、只读模式、危险命令与审计留痕上提供默认防护，但不会替代服务端的
+  ACL、TLS 与网络隔离。
+</p>
+
+<h2 id="model">安全模型</h2>
+
+<ul>
+  <li><strong>本地优先</strong>：连接配置、凭据、审计日志与回收站都在本机，不向任何云端服务上传数据。</li>
+  <li><strong>最小权限</strong>：建议为 RedisLens 使用独立 ACL 账号，按环境授予只读或有限写权限。</li>
+  <li><strong>纵深防御</strong>：只读模式在界面与后端双重校验；危险命令在客户端拦截并强制确认；所有操作写入审计。</li>
+  <li><strong>不替代服务端安全</strong>：Redis 自身的 <code>requirepass</code> / ACL、TLS、防火墙与 <code>protected-mode</code> 仍需正确配置。</li>
+</ul>
+
+<h2 id="credentials">凭据加密</h2>
+
+<p>
+  Redis 密码、哨兵密码、SSH 密码与 SSH 私钥口令不会以明文落盘。保存时使用
+  <strong>AES-256-GCM</strong> 加密，密文以 <code>AESGCM1:</code> 前缀存入
+  <code>config.json</code>。
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>环节</th><th>实现</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>数据密钥</td>
+        <td>由 32 字节随机主密钥（<code>key.bin</code>）与机器标识经 HKDF-SHA256 派生。</td>
+      </tr>
+      <tr>
+        <td>机器绑定</td>
+        <td>Windows 下读取 Machine GUID；读取失败时回退为主机名。把配置复制到另一台机器无法解密。</td>
+      </tr>
+      <tr>
+        <td>加密算法</td>
+        <td>AES-256-GCM，12 字节随机 nonce，认证标签随密文一起保存。</td>
+      </tr>
+      <tr>
+        <td>文件权限</td>
+        <td>配置目录 0700，<code>config.json</code> 与 <code>key.bin</code> 以 0600 创建，仅当前用户可读。</td>
+      </tr>
+      <tr>
+        <td>界面回显</td>
+        <td>连接列表与编辑表单不回传已保存密码；编辑时留空表示沿用原密码。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <div class="callout-title">换机、重装系统与密钥丢失</div>
+  <ul>
+    <li>复制 <code>%APPDATA%\RedisLens</code> 到另一台机器后，连接仍在，但密码无法解密，需要重新输入。</li>
+    <li>重装系统可能改变 Machine GUID，导致原有密文失效。</li>
+    <li>删除或损坏 <code>key.bin</code> 后，已保存的密码不可恢复；应用会生成新密钥，旧密文无法解密。</li>
+  </ul>
+  出现这些情况时，Redis 数据本身不受影响，重新编辑连接并输入密码即可。
+</div>
+
+<h2 id="data-dir">数据目录与权限</h2>
+
+<dl class="kv">
+  <dt>配置目录</dt>
+  <dd>%APPDATA%\RedisLens</dd>
+  <dt>连接与设置</dt>
+  <dd>config.json（机密字段为密文）</dd>
+  <dt>主密钥</dt>
+  <dd>key.bin（32 字节，0600）</dd>
+  <dt>审计日志</dt>
+  <dd>audit\audit-YYYY-MM.jsonl（0600，按月起文件）</dd>
+  <dt>本地日志</dt>
+  <dd>logs\redislens.log（开启本地日志开关时写入）</dd>
+  <dt>损坏备份</dt>
+  <dd>config.json.corrupt.YYYYMMDDhhmmss（解析失败时自动改名备份）</dd>
+</dl>
+
+<ul>
+  <li>应用不会把 Redis 数据复制到配置目录，<strong>回收站除外</strong>，且回收站仅存在于内存。</li>
+  <li>备份数据目录时，请把它当作包含敏感信息的文件处理；即使密码加密，连接拓扑与审计内容仍然敏感。</li>
+</ul>
+
+<h2 id="readonly">只读模式</h2>
+
+<p>
+  只读模式是连接级策略。开启后，前端隐藏 / 禁用写入口，后端在
+  <code>DeleteKeys</code>、<code>SetTTL</code>、<code>SetString</code>、<code>Import</code>、
+  <code>Publish</code>、<code>RecycleRestore</code> 等写路径执行前再次校验。
+</p>
+
+<ul>
+  <li>控制台中写命令与未知命令被拦截，并返回明确原因。</li>
+  <li>危险命令即使确认也不会绕过只读限制。</li>
+  <li>读取、监控、拓扑、慢查询、审计查询不受影响。</li>
+  <li>只读是客户端约束，不能阻止其他客户端写入；真正的只读保障应使用 Redis ACL。</li>
+</ul>
+
+<h2 id="danger">危险命令拦截</h2>
+
+<p>
+  命令按读、写、危险、阻塞四类建模，并支持子命令覆写（例如 <code>CONFIG GET</code> 只读，
+  <code>CONFIG SET</code> 危险）。控制台执行前会分类；危险与阻塞命令必须二次确认。
+</p>
+
+<div class="table-wrap wide">
+  <table>
+    <thead>
+      <tr><th>风险类别</th><th>示例</th><th>处理</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>清空 / 覆盖数据</td>
+        <td><code>FLUSHDB</code>、<code>FLUSHALL</code>、<code>SWAPDB</code>、<code>RESTORE</code>、<code>MIGRATE</code></td>
+        <td>拦截 → 输入命令名确认 → 审计 <code>danger</code>。</td>
+      </tr>
+      <tr>
+        <td>服务与配置</td>
+        <td><code>SHUTDOWN</code>、<code>CONFIG SET</code>、<code>CONFIG RESETSTAT</code>、<code>DEBUG</code>、<code>SLAVEOF</code> / <code>REPLICAOF</code></td>
+        <td>同上。只读子命令（如 <code>CONFIG GET</code>）正常执行。</td>
+      </tr>
+      <tr>
+        <td>脚本 / 函数 / 集群 / ACL</td>
+        <td><code>SCRIPT FLUSH</code>、<code>FUNCTION FLUSH</code>、<code>CLUSTER SETSLOT</code>、<code>ACL SETUSER</code></td>
+        <td>按子命令识别；写操作需确认，查询操作放行。</td>
+      </tr>
+      <tr>
+        <td>阻塞 / 流式</td>
+        <td><code>KEYS</code>、<code>MONITOR</code>、<code>SUBSCRIBE</code></td>
+        <td>提示会独占连接，确认后执行；建议改用 SCAN 或发布订阅页面。</td>
+      </tr>
+      <tr>
+        <td>普通写</td>
+        <td><code>SET</code>、<code>DEL</code>、<code>HSET</code>、<code>EXPIRE</code></td>
+        <td>正常执行并审计；只读模式下拦截。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout info">
+  <div class="callout-title">黑名单不是完备的</div>
+  命令分类基于内置注册表，未覆盖的自定义模块命令会按「写」处理：
+  只读模式拦截，非只读模式放行。不要把拦截列表当作完整的安全策略。
+</div>
+
+<h2 id="audit">审计日志</h2>
+
+<p>
+  审计日志以 JSONL 追加写入 <code>audit\audit-YYYY-MM.jsonl</code>，按自然月轮转；
+  应用启动时删除超过 90 天的文件。界面提供最近 500 条记录的查询与筛选。
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>字段</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>time</code></td><td>操作时间（RFC 3339）。</td></tr>
+      <tr><td><code>connId</code> / <code>connName</code></td><td>连接标识与名称。</td></tr>
+      <tr><td><code>category</code></td><td><code>connection</code>、<code>command</code>、<code>dangerous</code>、<code>key_edit</code>、<code>key_delete</code>、<code>export</code>、<code>import</code>、<code>analysis</code>。</td></tr>
+      <tr><td><code>action</code></td><td>动作名，如 <code>SET</code>、<code>DELETE</code>、<code>IMPORT</code>。</td></tr>
+      <tr><td><code>target</code></td><td>键名、命令摘要或文件名。</td></tr>
+      <tr><td><code>detail</code></td><td>补充信息，如字段名、键数量、失败原因。</td></tr>
+      <tr><td><code>result</code></td><td><code>ok</code>、<code>error</code>、<code>blocked</code>。</td></tr>
+      <tr><td><code>level</code></td><td><code>info</code>、<code>warn</code>、<code>danger</code>。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<ul>
+  <li>危险命令被拦截时记录 <code>blocked</code> / <code>warn</code>；用户确认执行后记录 <code>danger</code>。</li>
+  <li>键删除、移除 TTL 等操作记录为 <code>warn</code>，便于回溯高风险动作。</li>
+  <li>审计日志是本地普通文件，没有数字签名或防篡改机制；有合规需求时请实时采集到集中日志系统。</li>
+  <li>审计查询本身不会写入审计，避免自我放大。</li>
+</ul>
+
+<h2 id="recycle">回收站</h2>
+
+<p>
+  删除键时，如果开启备份（界面默认开启），会先 <code>DUMP</code> 当前值并记录
+  <code>PTTL</code>，然后执行 <code>UNLINK</code>。回收站按连接隔离。
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>属性</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>容量</td><td>最多 100 条或 64 MB，超出后自动淘汰最旧条目。</td></tr>
+      <tr><td>存储位置</td><td>进程内存，不落盘。</td></tr>
+      <tr><td>生命周期</td><td>跟随连接：关闭连接或退出应用即清空。</td></tr>
+      <tr><td>恢复方式</td><td><code>RESTORE REPLACE</code>，保留删除时的 TTL；永久键以 0 TTL 恢复。</td></tr>
+      <tr><td>覆盖行为</td><td>如果同名键已存在，恢复会覆盖它。</td></tr>
+      <tr><td>审计</td><td>删除记录 <code>key_delete</code>；恢复记录 <code>RESTORE</code>。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout danger">
+  <div class="callout-title">回收站不是备份系统</div>
+  它只存在于内存，容量有限，且关闭连接即丢失。需要可靠回滚时，请在删除前使用
+  <a href="data-transfer.html#export-json">JSON 导出</a>做完整备份。
+</div>
+
+<h2 id="ssh">SSH 与 TLS 边界</h2>
+
+<ul>
+  <li>SSH 隧道使用 <code>x/crypto/ssh</code>，支持密码与私钥认证。</li>
+  <li><strong>不校验 SSH 主机密钥</strong>：没有 <code>known_hosts</code> 管理，无法发现中间人替换跳板机。只在可信网络中使用，或通过堡垒机与网络策略控制。</li>
+  <li>TLS 最低版本为 1.2；指定 CA 时使用该 CA 校验服务端证书；开启「跳过证书校验」会关闭身份验证，仅建议测试环境使用。</li>
+  <li>SSH 与 TLS 解决的是传输安全，不改变 Redis 的认证与授权模型。</li>
+</ul>
+
+<h2 id="logs">本地日志</h2>
+
+<p>
+  开启「本地日志开关」后，应用运行日志追加写入
+  <code>logs\redislens.log</code>，包含连接重连等诊断信息，不记录密码或键值。
+  关闭开关会立即停止写入。日志文件没有自动轮转，长期运行请自行清理。
+</p>
+
+<h2 id="checklist">上线前检查清单</h2>
+
+<ul class="checklist">
+  <li>生产连接使用独立 ACL 账号，默认开启只读模式。</li>
+  <li>远程访问启用 TLS 或 SSH 隧道，并验证证书 / 跳板机可信。</li>
+  <li>不在多人共用 Windows 账号的机器上保存生产凭据。</li>
+  <li>为 <code>%APPDATA%\RedisLens</code> 做受控备份，并按敏感数据管理。</li>
+  <li>定期检查审计日志，确认没有意外的危险命令或批量删除。</li>
+  <li>大批量删除前先 JSON 导出，不依赖回收站作为唯一回滚手段。</li>
+</ul>
+<div class="page-meta">
+  <span>最后更新：2026-11-26</span>
+  <span><a href="https://github.com/flairamos/RedisLens/edit/main/tools/docs-site/pages/11-security.html" rel="noopener">在 GitHub 上编辑此页</a></span>
+  <span><a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">报告问题</a></span>
+</div>
+<nav class="pager" aria-label="文档翻页">
+  <a class="prev" href="topology.html"><span class="dir">← 上一篇</span><span class="name">实例拓扑</span></a>
+  <a class="next" href="settings.html"><span class="dir">下一篇 →</span><span class="name">设置与快捷键</span></a>
+</nav>
+    </main>
+    <aside class="toc" aria-label="本页目录">
+      <div class="toc-title">本页目录</div>
+      <div data-toc></div>
+    </aside>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© 2026 flairamos · RedisLens 文档</span>
+    <span>Apache-2.0 License</span>
+    <span class="grow"></span>
+    <div class="footer-links">
+      <a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">Releases</a>
+      <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a>
+      <a href="RedisLens产品需求文档PRD.docx">产品 PRD</a>
+    </div>
+  </div>
+</footer>
+<script src="assets/search-index.js?v=1.0.0"></script>
+<script src="assets/docs.js?v=1.0.0"></script>
+</body>
+</html>

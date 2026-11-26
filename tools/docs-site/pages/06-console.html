@@ -1,0 +1,162 @@
+<p class="lead">
+  命令行控制台是可视化操作之外的「逃生舱」：支持语法高亮、命令与键名补全、
+  按连接保存的历史，以及对危险 / 阻塞命令的强制拦截与二次确认。
+</p>
+
+<figure class="shot">
+  <img src="command.png" alt="RedisLens 命令行控制台" width="2858" height="1789" loading="lazy">
+  <figcaption>控制台会显示当前连接与 DB，危险命令以红色高亮。</figcaption>
+</figure>
+
+<h2 id="execute">输入与执行</h2>
+
+<ul>
+  <li>在底部输入一行 Redis 命令，按 <kbd>Enter</kbd> 或点「执行」。</li>
+  <li>命令按空格分词，支持单引号、双引号与转义：<code>SET k "hello world"</code>。</li>
+  <li>双引号内支持 <code>\n</code>、<code>\t</code>、<code>\r</code> 与 <code>\"</code>；单引号内为字面量。</li>
+  <li>每次执行都会显示时间、命令回显与结果；错误以红色显示。</li>
+  <li><kbd>Ctrl</kbd> + <kbd>L</kbd> 清屏（只清显示，不清历史）。</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">一次一行</div>
+  控制台不支持多行脚本或交互式会话。需要执行 Lua 脚本时，把脚本作为 <code>EVAL</code>
+  的单个引号参数传入；需要持续监听时使用 <a href="pubsub.html">发布订阅</a> 页面。
+</div>
+
+<h2 id="highlight">语法高亮</h2>
+
+<ul>
+  <li>命令名使用蓝色；危险 / 阻塞命令使用红色加粗。</li>
+  <li>引号包裹的字符串使用绿色，数字使用橙色。</li>
+  <li>高亮层位于透明输入框下方，输入法组合期间会切回普通文本，避免中文输入不可见。</li>
+</ul>
+
+<h2 id="completion">补全</h2>
+
+<ul>
+  <li>输入命令前缀后，下拉列出匹配命令、中文说明与「危险」标记，最多 10 条。</li>
+  <li>输入空格后，按当前已输入片段补全键名：通过 <code>SCAN 前缀* COUNT 50</code> 取最多 10 个候选。</li>
+  <li><kbd>Tab</kbd> 采纳当前候选；<kbd>↑</kbd> / <kbd>↓</kbd> 切换；<kbd>Esc</kbd> 关闭下拉。</li>
+  <li>键名补全带 200 ms 防抖，避免频繁扫描。</li>
+</ul>
+
+<h2 id="history">命令历史</h2>
+
+<ul>
+  <li>历史按连接保存在浏览器本地存储中，切换连接会切换对应历史。</li>
+  <li>最多保留最近 200 条；顶部「历史」按钮可打开列表并点击回填。</li>
+  <li>输入框内 <kbd>↑</kbd> / <kbd>↓</kbd> 浏览历史，离开历史时恢复未提交的草稿。</li>
+  <li>可在历史面板中清空当前连接的历史；清空不影响审计日志。</li>
+</ul>
+
+<h2 id="guard">危险命令拦截</h2>
+
+<p>
+  控制台在执行前对命令分类。危险命令与阻塞命令不会直接执行，而是弹出确认框；
+  确认框要求<strong>手动输入命令名</strong>（例如 <code>FLUSHALL</code>）后才能继续。
+</p>
+
+<div class="table-wrap wide">
+  <table>
+    <thead>
+      <tr><th>类别</th><th>典型命令</th><th>控制台行为</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>危险（数据 / 服务）</td>
+        <td><code>FLUSHALL</code>、<code>FLUSHDB</code>、<code>SHUTDOWN</code>、<code>CONFIG SET</code>、<code>CONFIG RESETSTAT</code>、<code>DEBUG</code>、<code>SLAVEOF</code> / <code>REPLICAOF</code>、<code>SWAPDB</code>、<code>MIGRATE</code>、<code>RESTORE</code></td>
+        <td>拦截并弹出确认；确认后执行并记入审计（<code>danger</code>）。</td>
+      </tr>
+      <tr>
+        <td>脚本 / 函数 / 集群 / ACL 写</td>
+        <td><code>SCRIPT FLUSH</code>、<code>FUNCTION FLUSH</code>、<code>FUNCTION DELETE</code>、<code>CLUSTER SETSLOT</code>、<code>CLUSTER FAILOVER</code>、<code>ACL SETUSER</code>、<code>ACL DELUSER</code></td>
+        <td>同上，按子命令识别；只读子命令如 <code>CLUSTER INFO</code> 正常执行。</td>
+      </tr>
+      <tr>
+        <td>阻塞 / 流式</td>
+        <td><code>KEYS</code>、<code>MONITOR</code></td>
+        <td>拦截并提示会独占连接；确认后执行。UI 不适合持续流式输出。</td>
+      </tr>
+      <tr>
+        <td>写命令</td>
+        <td><code>SET</code>、<code>DEL</code>、<code>HSET</code>、<code>PUBLISH</code>、<code>EXPIRE</code> 等</td>
+        <td>正常执行；在只读模式下被拦截。</td>
+      </tr>
+      <tr>
+        <td>只读命令</td>
+        <td><code>GET</code>、<code>HGETALL</code>、<code>SCAN</code>、<code>INFO</code>、<code>TTL</code>、<code>CONFIG GET</code></td>
+        <td>直接执行，仅记录 <code>info</code> 审计。</td>
+      </tr>
+      <tr>
+        <td>未知命令</td>
+        <td>未注册的自定义模块命令等</td>
+        <td>正常模式下放行；只读模式下按写命令保守拦截。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <div class="callout-title">确认框不是装饰</div>
+  危险命令的确认框需要输入完整命令名，且会把「拦截」与「确认执行」分别写入审计。
+  在生产实例上，请再次核对顶部连接名与 DB。
+</div>
+
+<h2 id="readonly">只读模式</h2>
+
+<p>
+  连接开启只读后，控制台会在执行前拦截所有写命令与未知命令，返回明确原因，
+  例如「当前连接处于只读模式，已拦截写命令」。即使传入 <code>confirm</code>
+  也只会放行危险命令，不会绕过只读策略。
+</p>
+
+<h2 id="results">结果格式</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Redis 回复</th><th>控制台显示</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Status / Bulk string</td><td>原样文本；包含空格或换行时加引号。</td></tr>
+      <tr><td>Integer</td><td><code>(integer) 42</code></td></tr>
+      <tr><td>Nil</td><td><code>(nil)</code></td></tr>
+      <tr><td>空数组</td><td><code>(empty array)</code></td></tr>
+      <tr><td>数组</td><td>逐行编号 <code>1) ...</code>；嵌套数组显示为 <code>[a, b]</code>。</td></tr>
+      <tr><td>错误</td><td><code>ERR ...</code>，以红色显示。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="limits">限制与注意事项</h2>
+
+<ul>
+  <li>单条命令执行超时为 <strong>30 秒</strong>；阻塞命令会占用连接，超时后返回错误。</li>
+  <li><code>MONITOR</code>、<code>SUBSCRIBE</code> 这类持续流式命令不适合在控制台使用；请改用发布订阅页面。</li>
+  <li>控制台没有事务会话保持：<code>MULTI</code> 与后续命令可能不在同一连接上，事务请用脚本或在单一客户端的场景下执行。</li>
+  <li>集群模式下命令按键路由；跨槽多键命令会返回 <code>CROSSSLOT</code> 类错误。</li>
+  <li>不是所有模块命令都在补全表中；未注册命令仍可手动输入。</li>
+</ul>
+
+<div class="callout danger">
+  <div class="callout-title">事务命令的实际限制</div>
+  控制台每次执行都从连接池取连接，<code>MULTI</code> / <code>EXEC</code> 不保证落在同一物理连接。
+  需要原子事务时，请使用 Lua 脚本、Redis Functions，或在业务客户端中实现。
+</div>
+
+<h2 id="examples">常用示例</h2>
+
+<pre><code>SET user:1001 '{"name":"Ada","plan":"pro"}'
+GET user:1001
+HSET user:1001:profile city Shanghai
+HGETALL user:1001:profile
+SCAN 0 MATCH order:2026:* COUNT 100
+TTL session:abc123
+INFO memory
+SLOWLOG GET 10
+CONFIG GET maxmemory</code></pre>
+
+<p class="small muted">
+  引号内的 JSON 会作为一个参数传递；含空格的值必须加引号，否则会被拆成多个参数。
+</p>

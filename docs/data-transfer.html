@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>导入导出与批量删除 · RedisLens 文档</title>
+<meta name="description" content="导出 JSON（含 DUMP 保真数据）或 CSV，跨实例导入恢复，以及在预览确认后批量删除键。">
+<meta name="theme-color" content="#dc382d">
+<link rel="canonical" href="https://flairamos.github.io/RedisLens/data-transfer.html">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/docs.css?v=1.0.0">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RedisLens 文档">
+<meta property="og:title" content="导入导出与批量删除 · RedisLens 文档">
+<meta property="og:description" content="导出 JSON（含 DUMP 保真数据）或 CSV，跨实例导入恢复，以及在预览确认后批量删除键。">
+<meta property="og:url" content="https://flairamos.github.io/RedisLens/data-transfer.html">
+<script>try{var t=localStorage.getItem("redislens-docs-theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="icon-btn menu-btn" type="button" data-menu-toggle aria-label="打开文档导航" aria-expanded="false" aria-controls="docs-sidebar">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+    <a class="brand" href="index.html" aria-label="RedisLens 文档首页">
+      <svg class="brand-logo" viewBox="0 0 132 36" fill="none" role="img" aria-label="RedisLens">
+        <g>
+          <circle cx="16" cy="15" r="10.5" fill="none" stroke="currentColor" stroke-width="3"></circle>
+          <path d="M16 8.2 L21.5 12.1 L16 16 L10.5 12.1 Z" fill="#DC382D"></path>
+          <path d="M16 12.6 L21.5 16.5 L16 20.4 L10.5 16.5 Z" fill="#C02C22"></path>
+          <path d="M16 17 L21.5 20.9 L16 24.8 L10.5 20.9 Z" fill="#A82620"></path>
+          <line x1="24.2" y1="23.2" x2="30" y2="29" stroke="#DC382D" stroke-width="4.2" stroke-linecap="round"></line>
+        </g>
+        <text x="38" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="currentColor" letter-spacing="0.2">Redis</text>
+        <text x="86" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="#DC382D" letter-spacing="0.2">Lens</text>
+      </svg>
+      <span class="brand-badge">Docs</span>
+    </a>
+    <nav class="topnav" aria-label="站点导航">
+      <a href="index.html">文档</a>
+      <a href="getting-started.html">快速开始</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">下载</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <button class="search-trigger" type="button" data-search-open aria-label="搜索文档（Ctrl K）">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+      <span>搜索文档</span>
+      <span class="grow"></span>
+      <kbd>Ctrl K</kbd>
+    </button>
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/flairamos/RedisLens" aria-label="RedisLens GitHub 仓库" title="GitHub" rel="noopener">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.4 0C6.2 2.8 5.1 3.1 5.1 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 3.7 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>
+    </a>
+  </div>
+</header>
+<div class="backdrop" data-backdrop></div>
+<div class="layout">
+
+<aside class="sidebar" id="docs-sidebar" aria-label="文档导航">
+
+    <div class="nav-section">
+      <div class="nav-section-title">开始</div>
+      <a class="nav-link" href="index.html"><span class="nav-dot"></span>产品概览</a>
+      <a class="nav-link" href="getting-started.html"><span class="nav-dot"></span>安装与首次连接</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">使用指南</div>
+      <a class="nav-link" href="connections.html"><span class="nav-dot"></span>连接管理</a>
+      <a class="nav-link" href="browser.html"><span class="nav-dot"></span>数据浏览与编辑</a>
+      <a class="nav-link" href="dashboard.html"><span class="nav-dot"></span>监控仪表盘</a>
+      <a class="nav-link" href="console.html"><span class="nav-dot"></span>命令行控制台</a>
+      <a class="nav-link" href="analysis.html"><span class="nav-dot"></span>键空间分析</a>
+      <a class="nav-link active" href="data-transfer.html" aria-current="page"><span class="nav-dot"></span>导入导出与批量删除</a>
+      <a class="nav-link" href="pubsub.html"><span class="nav-dot"></span>发布订阅</a>
+      <a class="nav-link" href="topology.html"><span class="nav-dot"></span>实例拓扑</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">参考</div>
+      <a class="nav-link" href="security.html"><span class="nav-dot"></span>安全与审计</a>
+      <a class="nav-link" href="settings.html"><span class="nav-dot"></span>设置与快捷键</a>
+      <a class="nav-link" href="faq.html"><span class="nav-dot"></span>常见问题</a>
+      <a class="nav-link" href="development.html"><span class="nav-dot"></span>开发者指南</a>
+    </div>
+  <div class="sidebar-footer">
+    <div>RedisLens v1.0.0 · Apache-2.0</div>
+    <div><a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub 仓库</a> · <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a></div>
+  </div>
+</aside>
+  <div class="content-wrap">
+    <main class="content" id="main">
+      <nav class="breadcrumb" aria-label="面包屑">
+        <a href="index.html">文档</a><span class="sep">/</span><span>使用指南</span><span class="sep">/</span><span>导入导出与批量删除</span>
+      </nav>
+      <h1>导入导出与批量删除</h1>
+<p class="lead">
+  导入导出用于备份、跨实例迁移与批量清理。JSON 导出包含 Redis <code>DUMP</code> 的
+  Base64 保真数据，可通过 <code>RESTORE</code> 恢复任意受支持类型；CSV 只导出键清单，
+  适合做报表与审计对照。
+</p>
+
+<div class="callout info">
+  <div class="callout-title">作用范围</div>
+  所有操作都作用于<strong>当前连接 + 当前 DB</strong>，按匹配模式与类型筛选。
+  单次导出 / 导入的超时上限为 10 分钟；集群模式下扫描通常只覆盖其中一个节点。
+</div>
+
+<figure class="shot">
+  <img src="export.png" alt="RedisLens 导入导出与批量删除界面" width="2858" height="1789" loading="lazy">
+  <figcaption>导出、导入与批量删除集中在同一页；删除需要先预览并输入匹配模式确认。</figcaption>
+</figure>
+
+<h2 id="export-json">导出 JSON（含值）</h2>
+
+<p>
+  在「导入导出」页填写匹配模式与类型，点击「导出 JSON（含值）」，选择保存路径。
+  默认文件名 <code>redislens-export.json</code>。
+</p>
+
+<p>
+  文件是 <strong>JSONL</strong> 格式：第一行是文件头，之后每行是一条键记录。
+  这样做便于流式处理，避免把整个文件构造成一个巨大的 JSON 数组。
+</p>
+
+<pre><code>{"format":"RedisLens-export","version":1,"count":2}
+{"key":"user:1001","type":"hash","pttl":-1,"dump":"AAAB8wAAA..."}
+{"key":"session:abc","type":"string","pttl":3600000,"dump":"AAAB9A...","value":"hello"}</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>字段</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>format</code></td><td>固定为 <code>RedisLens-export</code>，导入时用于校验。</td></tr>
+      <tr><td><code>version</code></td><td>导出格式版本，当前为 1。</td></tr>
+      <tr><td><code>source</code></td><td>导出时连接的名称，仅作来源标识。</td></tr>
+      <tr><td><code>exportedAt</code></td><td>导出时间（ISO 8601）。</td></tr>
+      <tr><td><code>count</code></td><td>记录条数。</td></tr>
+      <tr><td><code>key</code> / <code>type</code></td><td>键名与归一化后的类型。</td></tr>
+      <tr><td><code>pttl</code></td><td>剩余过期时间（毫秒）；<code>-1</code> 表示永久。</td></tr>
+      <tr><td><code>dump</code></td><td><code>DUMP</code> 结果的 Base64，用于保真恢复。</td></tr>
+      <tr><td><code>value</code></td><td>仅 string / json 类型提供的人类可读值，作为 <code>RESTORE</code> 失败时的回退。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="export-notes">导出注意事项</h3>
+
+<ul>
+  <li>导出基于 <code>SCAN</code>，遍历期间的新增 / 删除可能导致结果不是严格快照。</li>
+  <li>RedisLens 会先把记录收集到内存再写文件；超大键空间请按前缀分批导出，避免内存与 10 分钟超时问题。</li>
+  <li>导出不会修改数据；只读模式下也可以导出。</li>
+  <li>导出成功后写入一条 <code>export</code> 审计记录（文件名与匹配模式）。</li>
+</ul>
+
+<h2 id="export-csv">导出 CSV 清单</h2>
+
+<p>
+  CSV 是轻量键清单，不含值，不能用于恢复。表头固定为：
+</p>
+
+<pre><code>key,type,ttl_ms,memory_bytes
+"user:1001",hash,0,2048
+"session:abc",string,3600000,64</code></pre>
+
+<ul>
+  <li>每个键一行，字段为键名、类型、TTL（毫秒）与 <code>MEMORY USAGE</code> 字节数。</li>
+  <li>CSV 中的 TTL 列对永久键显示 <code>0</code>；需要严格区分「永久 / 剩余时间」时，以 JSON 导出的 <code>pttl</code>（<code>-1</code> 表示永久）为准。</li>
+  <li>默认文件名 <code>redislens-keys.csv</code>。</li>
+  <li>适合在 Excel / 脚本中做键分布分析；导入功能<strong>只接受</strong> RedisLens 的 JSON 导出文件，不接受 CSV。</li>
+</ul>
+
+<h2 id="import">导入</h2>
+
+<p>
+  点击「选择文件并导入」，选择一个由 RedisLens 导出的 JSON 文件。
+  导入会先解析并校验文件头，然后逐条恢复：
+</p>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">校验格式</span>
+    文件头必须是 <code>RedisLens-export</code>；否则直接报错「not a RedisLens export file」。
+  </li>
+  <li>
+    <span class="step-title">按覆盖策略处理</span>
+    勾选「覆盖已存在的键」时使用 <code>RESTORE REPLACE</code>；
+    未勾选时先 <code>EXISTS</code>，已存在则跳过并计入「跳过」。
+  </li>
+  <li>
+    <span class="step-title">恢复值，必要时回退</span>
+    优先用 <code>RESTORE</code> 恢复 DUMP（保留类型、编码与 TTL）。
+    如果 <code>RESTORE</code> 失败且记录带有人类可读值，则对 string 用 <code>SET</code>、
+    对 json 用 <code>JSON.SET</code> 重建；其他类型计为失败。
+  </li>
+  <li>
+    <span class="step-title">查看报告</span>
+    页面显示总计、成功、跳过、失败与耗时，并提示导入了多少键。
+  </li>
+</ol>
+
+<div class="callout warn">
+  <div class="callout-title">跨版本 / 跨模块迁移不一定 100% 成功</div>
+  <code>DUMP</code> / <code>RESTORE</code> 受 Redis 版本与模块影响。目标实例版本过低、
+  缺少 RedisJSON 等模块，或 DUMP 编码不兼容时，部分记录会失败。
+  这类失败会如实计入报告，不会静默当成成功。
+</div>
+
+<ul>
+  <li>导入会将整个文件读入内存，超大文件需要预留足够内存。</li>
+  <li>只读模式下导入按钮禁用，后端也会拒绝。</li>
+  <li>导入成功写入一条 <code>import</code> 审计记录，包含成功 / 跳过 / 失败计数。</li>
+  <li>覆盖模式会直接替换同名键，操作前建议先导出备份。</li>
+</ul>
+
+<h2 id="batch-delete">批量删除</h2>
+
+<p>
+  「批量删除」先扫描匹配键并展示预览，确认后才执行删除。流程被刻意拆成三步，
+  避免一次误输入清空整个库。
+</p>
+
+<h3 id="preview">1. 预览</h3>
+
+<ul>
+  <li>填写匹配模式（必填）并可选类型筛选，点击「预览匹配键」。</li>
+  <li>预览会扫描整个 DB，统计匹配总数（最多统计到 5,000,000 个），
+      并最多保留 <strong>1000</strong> 个键作为明细样本。</li>
+  <li>预览不会删除任何数据。</li>
+</ul>
+
+<h3 id="confirm">2. 确认</h3>
+
+<p>
+  点击「确认删除」后，会要求输入<strong>完整的匹配模式</strong>（例如 <code>cache:temp:*</code>）
+  才能继续。输入不一致时确认按钮保持禁用。
+</p>
+
+<h3 id="execute">3. 执行</h3>
+
+<ul>
+  <li>删除针对本次预览中的键执行（最多 1000 个），每 500 个一批。</li>
+  <li>每个键先 <code>DUMP</code> 备份到回收站，再 <code>UNLINK</code>；备份失败会中止该键的删除并报错。</li>
+  <li>如果匹配总数超过 1000，请缩小匹配模式分批处理，不要把「预览总数」当作本次实际删除量。</li>
+  <li>删除完成后写入 <code>key_delete</code> 审计记录，级别为 <code>warn</code>。</li>
+</ul>
+
+<div class="callout danger">
+  <div class="callout-title">回收站容量有限</div>
+  回收站上限为 <strong>100 条 / 64 MB</strong>，超出后自动淘汰最旧条目。
+  批量删除数百个键时，早期的备份可能已被淘汰，无法全部恢复。
+  大批量清理前，请先用 JSON 导出做完整备份。
+</div>
+
+<h2 id="migration">推荐的迁移流程</h2>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">只读源实例</span>
+    为源连接开启只读模式，避免迁移过程中数据继续变化。
+  </li>
+  <li>
+    <span class="step-title">按前缀分批导出</span>
+    用 <code>user:*</code>、<code>order:*</code> 等模式分批导出，降低单文件体积与超时风险。
+  </li>
+  <li>
+    <span class="step-title">在目标实例导入</span>
+    先在小范围键上验证类型、TTL 与模块兼容性，再全量导入；根据需要开启覆盖。
+  </li>
+  <li>
+    <span class="step-title">核对报告与抽样</span>
+    检查成功 / 失败计数，并在数据浏览中抽查 Hash、Stream、JSON 等复杂类型。
+  </li>
+</ol>
+<div class="page-meta">
+  <span>最后更新：2026-11-26</span>
+  <span><a href="https://github.com/flairamos/RedisLens/edit/main/tools/docs-site/pages/08-data-transfer.html" rel="noopener">在 GitHub 上编辑此页</a></span>
+  <span><a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">报告问题</a></span>
+</div>
+<nav class="pager" aria-label="文档翻页">
+  <a class="prev" href="analysis.html"><span class="dir">← 上一篇</span><span class="name">键空间分析</span></a>
+  <a class="next" href="pubsub.html"><span class="dir">下一篇 →</span><span class="name">发布订阅</span></a>
+</nav>
+    </main>
+    <aside class="toc" aria-label="本页目录">
+      <div class="toc-title">本页目录</div>
+      <div data-toc></div>
+    </aside>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© 2026 flairamos · RedisLens 文档</span>
+    <span>Apache-2.0 License</span>
+    <span class="grow"></span>
+    <div class="footer-links">
+      <a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">Releases</a>
+      <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a>
+      <a href="RedisLens产品需求文档PRD.docx">产品 PRD</a>
+    </div>
+  </div>
+</footer>
+<script src="assets/search-index.js?v=1.0.0"></script>
+<script src="assets/docs.js?v=1.0.0"></script>
+</body>
+</html>

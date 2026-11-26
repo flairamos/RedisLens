@@ -1,0 +1,89 @@
+<p class="lead">
+  实例拓扑用于确认「当前连的到底是谁」：单机主从关系、哨兵与主节点、集群分片与槽位分布。
+  页面只做只读发现，不会触发主从切换、故障转移或槽位迁移。
+</p>
+
+<h2 id="discover">自动发现</h2>
+
+<p>
+  进入页面时会自动发现一次；也可以点「重新发现」刷新。发现方式随连接模式不同：
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>连接模式</th><th>发现方式</th><th>展示内容</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>单机（standalone）</td>
+        <td>读取 <code>INFO</code> 的 replication 段。</td>
+        <td>当前节点角色、已连接副本列表与状态。</td>
+      </tr>
+      <tr>
+        <td>哨兵（sentinel）</td>
+        <td>依次尝试哨兵地址，执行 <code>SENTINEL get-master-addr-by-name</code> 与副本查询。</td>
+        <td>主节点、副本、哨兵节点及副本链路状态。</td>
+      </tr>
+      <tr>
+        <td>集群（cluster）</td>
+        <td>通过种子节点执行 <code>CLUSTER SLOTS</code>。</td>
+        <td>分片数量、每个槽位区间的主 / 从节点、节点 ID。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="standalone">单机主从视图</h2>
+
+<p>
+  单机模式展示一张节点表：当前连接的主节点，以及 <code>connected_slaves</code>
+  中列出的副本。副本状态为 <code>online</code> 表示链路正常；其他状态会以红色提示。
+</p>
+
+<ul>
+  <li>如果连接的是副本，表格中该节点角色会显示为 <code>replica</code>。</li>
+  <li>主从关系来自 <code>INFO replication</code>，不是通过扫描网络发现。</li>
+  <li>主从切换后，重新发现即可看到新的角色关系。</li>
+</ul>
+
+<h2 id="sentinel">哨兵视图</h2>
+
+<p>
+  哨兵模式会展示三类节点：当前主节点、副本、参与发现的哨兵节点。
+  主节点地址来自哨兵返回结果，而不是连接表单中填写的地址。
+</p>
+
+<ul>
+  <li>至少需要一个可达的哨兵节点；全部不可达时页面提示「无法连接任何哨兵节点」。</li>
+  <li>副本状态取自哨兵的 <code>master-link-status</code>。</li>
+  <li>哨兵自身启用认证时，使用连接配置中的「哨兵用户名 / 密码」。</li>
+</ul>
+
+<h2 id="cluster">集群分片视图</h2>
+
+<p>
+  集群模式按槽位区间聚合为分片卡片，每个分片显示：
+</p>
+
+<ul>
+  <li>槽位范围（如 <code>0-5460</code>）；</li>
+  <li>主节点地址与节点 ID 前 12 位；</li>
+  <li>该分片下的副本节点。</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">分片视图是发现结果</div>
+  分片与角色来自 <code>CLUSTER SLOTS</code> 的返回顺序。扩缩容或故障转移进行中，
+  拓扑可能短暂不一致；以 <code>CLUSTER INFO</code> / <code>CLUSTER NODES</code>
+  的完整输出为准。
+</div>
+
+<h2 id="limits">注意事项</h2>
+
+<ul>
+  <li>拓扑发现不会修改任何节点状态，也不会执行 <code>FAILOVER</code>、<code>SETSLOT</code> 等操作。</li>
+  <li>集群连接只从一个种子节点发现拓扑；如果种子节点不可用，连接本身也无法打开。</li>
+  <li>网络 ACL、NAT 或端口映射可能导致返回的节点地址无法从本机直连；这种情况下连接可能需要 SSH 隧道或额外网络配置。</li>
+  <li>页面展示的是发现瞬间的快照，不会自动轮询刷新。</li>
+</ul>

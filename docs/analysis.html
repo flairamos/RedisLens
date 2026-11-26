@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>键空间分析 · RedisLens 文档</title>
+<meta name="description" content="通过渐进式 SCAN 发现大 Key，查看类型与 TTL 分布、慢查询日志和热命令统计。">
+<meta name="theme-color" content="#dc382d">
+<link rel="canonical" href="https://flairamos.github.io/RedisLens/analysis.html">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/docs.css?v=1.0.0">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RedisLens 文档">
+<meta property="og:title" content="键空间分析 · RedisLens 文档">
+<meta property="og:description" content="通过渐进式 SCAN 发现大 Key，查看类型与 TTL 分布、慢查询日志和热命令统计。">
+<meta property="og:url" content="https://flairamos.github.io/RedisLens/analysis.html">
+<script>try{var t=localStorage.getItem("redislens-docs-theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="icon-btn menu-btn" type="button" data-menu-toggle aria-label="打开文档导航" aria-expanded="false" aria-controls="docs-sidebar">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+    <a class="brand" href="index.html" aria-label="RedisLens 文档首页">
+      <svg class="brand-logo" viewBox="0 0 132 36" fill="none" role="img" aria-label="RedisLens">
+        <g>
+          <circle cx="16" cy="15" r="10.5" fill="none" stroke="currentColor" stroke-width="3"></circle>
+          <path d="M16 8.2 L21.5 12.1 L16 16 L10.5 12.1 Z" fill="#DC382D"></path>
+          <path d="M16 12.6 L21.5 16.5 L16 20.4 L10.5 16.5 Z" fill="#C02C22"></path>
+          <path d="M16 17 L21.5 20.9 L16 24.8 L10.5 20.9 Z" fill="#A82620"></path>
+          <line x1="24.2" y1="23.2" x2="30" y2="29" stroke="#DC382D" stroke-width="4.2" stroke-linecap="round"></line>
+        </g>
+        <text x="38" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="currentColor" letter-spacing="0.2">Redis</text>
+        <text x="86" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="#DC382D" letter-spacing="0.2">Lens</text>
+      </svg>
+      <span class="brand-badge">Docs</span>
+    </a>
+    <nav class="topnav" aria-label="站点导航">
+      <a href="index.html">文档</a>
+      <a href="getting-started.html">快速开始</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">下载</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <button class="search-trigger" type="button" data-search-open aria-label="搜索文档（Ctrl K）">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+      <span>搜索文档</span>
+      <span class="grow"></span>
+      <kbd>Ctrl K</kbd>
+    </button>
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/flairamos/RedisLens" aria-label="RedisLens GitHub 仓库" title="GitHub" rel="noopener">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.4 0C6.2 2.8 5.1 3.1 5.1 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 3.7 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>
+    </a>
+  </div>
+</header>
+<div class="backdrop" data-backdrop></div>
+<div class="layout">
+
+<aside class="sidebar" id="docs-sidebar" aria-label="文档导航">
+
+    <div class="nav-section">
+      <div class="nav-section-title">开始</div>
+      <a class="nav-link" href="index.html"><span class="nav-dot"></span>产品概览</a>
+      <a class="nav-link" href="getting-started.html"><span class="nav-dot"></span>安装与首次连接</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">使用指南</div>
+      <a class="nav-link" href="connections.html"><span class="nav-dot"></span>连接管理</a>
+      <a class="nav-link" href="browser.html"><span class="nav-dot"></span>数据浏览与编辑</a>
+      <a class="nav-link" href="dashboard.html"><span class="nav-dot"></span>监控仪表盘</a>
+      <a class="nav-link" href="console.html"><span class="nav-dot"></span>命令行控制台</a>
+      <a class="nav-link active" href="analysis.html" aria-current="page"><span class="nav-dot"></span>键空间分析</a>
+      <a class="nav-link" href="data-transfer.html"><span class="nav-dot"></span>导入导出与批量删除</a>
+      <a class="nav-link" href="pubsub.html"><span class="nav-dot"></span>发布订阅</a>
+      <a class="nav-link" href="topology.html"><span class="nav-dot"></span>实例拓扑</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">参考</div>
+      <a class="nav-link" href="security.html"><span class="nav-dot"></span>安全与审计</a>
+      <a class="nav-link" href="settings.html"><span class="nav-dot"></span>设置与快捷键</a>
+      <a class="nav-link" href="faq.html"><span class="nav-dot"></span>常见问题</a>
+      <a class="nav-link" href="development.html"><span class="nav-dot"></span>开发者指南</a>
+    </div>
+  <div class="sidebar-footer">
+    <div>RedisLens v1.0.0 · Apache-2.0</div>
+    <div><a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub 仓库</a> · <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a></div>
+  </div>
+</aside>
+  <div class="content-wrap">
+    <main class="content" id="main">
+      <nav class="breadcrumb" aria-label="面包屑">
+        <a href="index.html">文档</a><span class="sep">/</span><span>使用指南</span><span class="sep">/</span><span>键空间分析</span>
+      </nav>
+      <h1>键空间分析</h1>
+<p class="lead">
+  键空间分析把「哪些键最占资源、过期策略是否合理、慢在什么命令上」集中到一页。
+  大 Key 扫描使用渐进式 <code>SCAN</code>，不会一次性阻塞实例，并且可以随时停止。
+</p>
+
+<h2 id="bigkey">大 Key 扫描</h2>
+
+<p>点击右上角「开始大 Key 扫描」，后台任务会遍历当前 DB：</p>
+
+<ul>
+  <li>使用 <code>SCAN</code>（COUNT 200）渐进遍历，最多扫描 <strong>2,000,000</strong> 个键。</li>
+  <li>对每个键读取类型、<code>MEMORY USAGE</code>、TTL，并按类型读取元素数量（<code>LLEN</code> / <code>HLEN</code> / <code>SCARD</code> / <code>ZCARD</code> / <code>XLEN</code> / <code>STRLEN</code>）。</li>
+  <li>扫描进度每约 400 ms 推送一次，界面显示「已扫描 / 键总数」与进度条。</li>
+  <li>结果按<strong>内存占用</strong>与<strong>元素数量</strong>分别给出 Top 20。</li>
+  <li>可随时点「停止」；已扫描的部分仍会生成报告，但不会弹出完成提示。</li>
+</ul>
+
+<div class="callout warn">
+  <div class="callout-title">扫描不是零成本</div>
+  每个键需要多次命令往返。百万级键空间会产生可观的 CPU 与网络开销，
+  建议在低峰期执行，并优先对怀疑有问题的 DB 单独扫描。
+  只读模式下也可以执行扫描，因为它不写入数据。
+</div>
+
+<h3 id="bigkey-result">结果解读</h3>
+
+<div class="card-grid two">
+  <div class="card">
+    <h3 id="大-key-排行-内存">大 Key 排行（内存）</h3>
+    <p>按 <code>MEMORY USAGE</code> 排序，适合定位缓存体量大、可能触发淘汰或网络拥塞的键。</p>
+  </div>
+  <div class="card">
+    <h3 id="大-key-排行-元素数">大 Key 排行（元素数）</h3>
+    <p>按元素数量排序，适合发现超大 List / Hash / Set / ZSet / Stream，这类键在删除或遍历时容易阻塞。</p>
+  </div>
+  <div class="card">
+    <h3 id="类型分布">类型分布</h3>
+    <p>按类型统计已扫描键数量，展示前 8 类。可用于判断是否存在意外的数据类型混用。</p>
+  </div>
+  <div class="card">
+    <h3 id="ttl-分布">TTL 分布</h3>
+    <p>按「永不过期 / ≤1 分钟 / ≤1 小时 / ≤1 天 / ≤7 天 / ≤30 天 / &gt;30 天」分桶；永不过期占比过高通常意味着内存会持续增长。</p>
+  </div>
+</div>
+
+<p>点击排行中的任意键，会跳转到数据浏览并打开该键的值。</p>
+
+<h2 id="slowlog">慢查询日志</h2>
+
+<p>
+  「慢查询日志」卡片读取当前实例的 <code>SLOWLOG GET 100</code>，展示最近 100 条记录：
+  发生时间、耗时、完整命令与客户端地址。
+</p>
+
+<ul>
+  <li>耗时超过 10 ms 的记录以红色显示，其余为琥珀色。</li>
+  <li>点击某条记录会尝试把命令中的第一个键参数作为目标，跳转到数据浏览。</li>
+  <li>列表在进入页面时自动加载，也可以点「刷新」获取最新记录。</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">慢查询由服务端配置决定</div>
+  Redis 只会记录超过 <code>slowlog-log-slower-than</code> 的命令，且 <code>slowlog-max-len</code>
+  限制保留条数。如果列表为空，先检查服务端是否关闭了慢查询日志或阈值设置过高。
+  修改这些参数需要 <code>CONFIG SET</code>（属于危险命令）。
+</div>
+
+<h2 id="cmdstats">热命令统计</h2>
+
+<p>
+  「热命令统计」读取 <code>INFO commandstats</code>，按调用次数排序，展示前 15 个命令及其平均耗时。
+  它反映的是<strong>整个实例</strong>自上次统计重置以来所有客户端的命令分布，不只是 RedisLens 自身。
+</p>
+
+<ul>
+  <li>调用次数高且平均耗时高的命令，通常是优化重点。</li>
+  <li><code>INFO commandstats</code> 不可用时，会自动回退为全量 <code>INFO</code> 解析。</li>
+  <li>Redis 重启或执行 <code>CONFIG RESETSTAT</code> 后统计会清零。</li>
+</ul>
+
+<h2 id="limits">使用建议</h2>
+
+<ul>
+  <li>先看「大 Key（内存）」与「永不过期」占比，再结合慢查询定位具体命令。</li>
+  <li>大 Key 扫描期间避免同时执行导出、批量删除等高负载操作。</li>
+  <li>扫描只覆盖当前连接的当前 DB；集群模式下 <code>SCAN</code> 通常只遍历其中一个节点，需要逐节点检查。</li>
+  <li>扫描会写入一条 <code>analysis</code> 类审计记录，包含扫描键数与耗时。</li>
+</ul>
+<div class="page-meta">
+  <span>最后更新：2026-11-26</span>
+  <span><a href="https://github.com/flairamos/RedisLens/edit/main/tools/docs-site/pages/07-analysis.html" rel="noopener">在 GitHub 上编辑此页</a></span>
+  <span><a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">报告问题</a></span>
+</div>
+<nav class="pager" aria-label="文档翻页">
+  <a class="prev" href="console.html"><span class="dir">← 上一篇</span><span class="name">命令行控制台</span></a>
+  <a class="next" href="data-transfer.html"><span class="dir">下一篇 →</span><span class="name">导入导出与批量删除</span></a>
+</nav>
+    </main>
+    <aside class="toc" aria-label="本页目录">
+      <div class="toc-title">本页目录</div>
+      <div data-toc></div>
+    </aside>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© 2026 flairamos · RedisLens 文档</span>
+    <span>Apache-2.0 License</span>
+    <span class="grow"></span>
+    <div class="footer-links">
+      <a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">Releases</a>
+      <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a>
+      <a href="RedisLens产品需求文档PRD.docx">产品 PRD</a>
+    </div>
+  </div>
+</footer>
+<script src="assets/search-index.js?v=1.0.0"></script>
+<script src="assets/docs.js?v=1.0.0"></script>
+</body>
+</html>

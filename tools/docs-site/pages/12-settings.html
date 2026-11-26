@@ -1,0 +1,152 @@
+<p class="lead">
+  设置页集中管理外观、采样、安全确认与扫描参数。所有修改即时生效并写入
+  <code>config.json</code>，无需重启应用。
+</p>
+
+<h2 id="appearance">外观</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>设置</th><th>选项</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>主题</td>
+        <td>浅色 / 深色</td>
+        <td>顶部栏的太阳 / 月亮按钮可随时切换；选择会持久化。</td>
+      </tr>
+      <tr>
+        <td>列表密度</td>
+        <td>紧凑 / 舒适 / 宽松</td>
+        <td>对应行高 28 / 34 / 42 px，影响键列表等表格的显示密度。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="monitor">监控</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>设置</th><th>默认</th><th>范围</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>采样间隔（秒）</td>
+        <td>10</td>
+        <td>1 – 60</td>
+        <td>
+          读取 <code>INFO</code> 的周期。修改后会立即下发到所有已打开连接，
+          无需重连；间隔越短，对实例的额外开销越大。
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="security">安全</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>设置</th><th>默认</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>危险命令二次确认</td>
+        <td>开启</td>
+        <td>
+          记录安全策略偏好。当前版本控制台对危险命令<strong>始终</strong>要求输入命令名确认，
+          关闭该开关不会跳过确认。
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout info">
+  <div class="callout-title">拦截范围</div>
+  <code>FLUSHALL</code>、<code>FLUSHDB</code>、<code>SHUTDOWN</code>、<code>CONFIG SET</code>、
+  <code>CONFIG RESETSTAT</code>、<code>DEBUG</code>、<code>SLAVEOF</code> / <code>REPLICAOF</code>、<code>SWAPDB</code>、
+  <code>MIGRATE</code>、<code>KEYS</code>、<code>MONITOR</code>、<code>SCRIPT FLUSH</code>、
+  <code>FUNCTION FLUSH</code>、<code>CLUSTER</code> 写操作、<code>ACL</code> 写操作等。
+  控制台与可视化操作共用同一套分类，详见 <a href="security.html#danger">安全与审计</a>。
+</div>
+
+<h2 id="data">数据</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>设置</th><th>默认</th><th>范围</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SCAN COUNT</td>
+        <td>500</td>
+        <td>≥ 10</td>
+        <td>
+          键列表、预览、导出等 SCAN 操作的每页建议数量。调大可减少往返次数，
+          但单次响应体更大、延迟更高。
+        </td>
+      </tr>
+      <tr>
+        <td>本地日志开关</td>
+        <td>开启</td>
+        <td>开 / 关</td>
+        <td>
+          开启时写入 <code>%APPDATA%\RedisLens\logs\redislens.log</code>；
+          关闭立即停止写入。日志不包含密码或键值。
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="about">关于</h2>
+
+<dl class="kv">
+  <dt>版本</dt>
+  <dd>v1.0.0</dd>
+  <dt>数据目录</dt>
+  <dd>%APPDATA%\RedisLens</dd>
+  <dt>启动时间</dt>
+  <dd>当前进程启动时间</dd>
+</dl>
+
+<h2 id="persistence">设置如何保存</h2>
+
+<ul>
+  <li>每次修改都会立即保存到 <code>config.json</code> 的 <code>settings</code> 段，不需要点「保存」。</li>
+  <li>主题切换、密度调整、采样间隔热更新会立即反映到界面与已打开连接。</li>
+  <li>当前版本没有「一键恢复默认设置」；如需重置，建议先备份数据目录，再手动编辑配置或删除对应字段。</li>
+  <li>直接编辑 <code>config.json</code> 前请先退出应用，避免被内存中的设置覆盖。</li>
+</ul>
+
+<h2 id="shortcuts">快捷键速查</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>快捷键</th><th>作用范围</th><th>行为</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>全局</td><td>打开 / 关闭全局搜索（键名、命令、模块）。</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>搜索 / 弹窗</td><td>关闭当前浮层。</td></tr>
+      <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>搜索</td><td>在结果之间移动。</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>搜索</td><td>打开当前结果。</td></tr>
+      <tr><td><kbd>Tab</kbd></td><td>控制台</td><td>采纳当前补全候选。</td></tr>
+      <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>控制台</td><td>浏览命令历史 / 补全候选。</td></tr>
+      <tr><td><kbd>Ctrl</kbd> + <kbd>L</kbd></td><td>控制台</td><td>清空屏幕输出（不清历史）。</td></tr>
+      <tr><td>双击值单元格</td><td>数据浏览</td><td>进入 Hash / List / ZSet 的行内编辑。</td></tr>
+      <tr><td><kbd>Enter</kbd> / <kbd>Esc</kbd></td><td>行内编辑</td><td>保存 / 取消当前单元格编辑。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">顶部主题按钮</div>
+  除设置页外，顶部栏右侧的太阳 / 月亮按钮可以直接切换主题，效果与设置页一致。
+</div>

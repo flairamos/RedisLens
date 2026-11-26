@@ -1,0 +1,15 @@
+<svg width="132" height="36" viewBox="0 0 132 36" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RedisLens">
+  <!-- 镜头图形 -->
+  <g>
+    <circle cx="16" cy="15" r="10.5" fill="none" stroke="currentColor" stroke-width="3"/>
+    <g>
+      <path d="M16 8.2 L21.5 12.1 L16 16 L10.5 12.1 Z" fill="#DC382D"/>
+      <path d="M16 12.6 L21.5 16.5 L16 20.4 L10.5 16.5 Z" fill="#C02C22"/>
+      <path d="M16 17 L21.5 20.9 L16 24.8 L10.5 20.9 Z" fill="#A82620"/>
+    </g>
+    <line x1="24.2" y1="23.2" x2="30" y2="29" stroke="#DC382D" stroke-width="4.2" stroke-linecap="round"/>
+  </g>
+  <!-- 文字 -->
+  <text x="38" y="24" font-family="Inter, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="17" font-weight="700" fill="currentColor" letter-spacing="0.2">Redis</text>
+  <text x="86" y="24" font-family="Inter, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="17" font-weight="700" fill="#DC382D" letter-spacing="0.2">Lens</text>
+</svg>

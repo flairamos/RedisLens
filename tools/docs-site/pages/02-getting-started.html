@@ -1,0 +1,229 @@
+<p class="lead">
+  从 GitHub Releases 获取 RedisLens，完成安装并连接第一个 Redis 实例。
+  如果你只想知道怎么最快跑起来，跟着本页的三步走即可。
+</p>
+
+<h2 id="requirements">系统要求</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>项目</th><th>要求</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>操作系统</td>
+        <td>Windows 10 / 11（x64）</td>
+        <td>当前发布产物为 <code>windows/amd64</code>。</td>
+      </tr>
+      <tr>
+        <td>WebView2</td>
+        <td>Microsoft Edge WebView2 Runtime</td>
+        <td>Windows 10 / 11 通常已内置；缺失时界面无法启动，可安装 Evergreen Runtime。</td>
+      </tr>
+      <tr>
+        <td>Redis</td>
+        <td>4.0 – 7.x</td>
+        <td>推荐 5.0 及以上。低版本缺少 <code>SCAN TYPE</code> 或分段 <code>INFO</code> 时会自动降级。</td>
+      </tr>
+      <tr>
+        <td>RedisJSON</td>
+        <td>可选</td>
+        <td>只有查看 / 编辑 <span class="type-badge type-json">JSON</span> 类型时才需要服务端加载 RedisJSON 模块。</td>
+      </tr>
+      <tr>
+        <td>磁盘与权限</td>
+        <td>可写用户配置目录</td>
+        <td>配置、密钥、审计日志写入 <code>%APPDATA%\RedisLens</code>；SSH 私钥与 TLS 证书需可读。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout info">
+  <div class="callout-title">无需服务端组件</div>
+  RedisLens 是纯客户端桌面应用，不需要在 Redis 服务器上安装 Agent、插件或额外服务。
+</div>
+
+<h2 id="download">下载与安装</h2>
+
+<p>
+  打开 <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">GitHub Releases</a>
+  下载最新版本。每次 <code>v*</code> 标签发布都会提供两个产物：
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>文件</th><th>类型</th><th>适合场景</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>RedisLens-amd64-installer.exe</code></td>
+        <td>NSIS 安装包（推荐）</td>
+        <td>需要开始菜单入口、标准安装 / 卸载流程的日常使用。</td>
+      </tr>
+      <tr>
+        <td><code>RedisLens.exe</code></td>
+        <td>便携版</td>
+        <td>免安装运行、放在 U 盘或受控目录中，适合临时排障。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="install-steps">安装步骤</h3>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">运行安装包</span>
+    双击 <code>RedisLens-amd64-installer.exe</code>，按向导选择安装目录并完成安装。
+    如果 Windows 提示未知发布者，请先确认文件来自本仓库的 Releases 页面，再选择继续。
+  </li>
+  <li>
+    <span class="step-title">启动应用</span>
+    从开始菜单或桌面快捷方式启动 <strong>RedisLens</strong>。首次启动会创建配置目录并展示欢迎页。
+  </li>
+  <li>
+    <span class="step-title">（可选）使用便携版</span>
+    直接双击 <code>RedisLens.exe</code>。便携版不写注册表、不创建开始菜单项，但配置仍保存在
+    <code>%APPDATA%\RedisLens</code>，与安装版共用。
+  </li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">升级</div>
+  安装新版安装包会覆盖程序文件，已有连接与设置保留；便携版直接替换 <code>exe</code> 即可。
+  升级前建议备份 <code>%APPDATA%\RedisLens</code> 目录。
+</div>
+
+<h2 id="data-dir">首次启动与数据目录</h2>
+
+<p>
+  首次启动时，RedisLens 在用户配置目录下创建自己的工作区。Windows 上即
+  <code>%APPDATA%\RedisLens</code>（通常是
+  <code>C:\Users\&lt;用户名&gt;\AppData\Roaming\RedisLens</code>）。
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>路径</th><th>内容</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>config.json</code></td>
+        <td>连接列表与全局设置</td>
+        <td>密码等机密字段以 <code>AESGCM1:</code> 前缀的密文保存，不存明文。</td>
+      </tr>
+      <tr>
+        <td><code>key.bin</code></td>
+        <td>32 字节随机主密钥</td>
+        <td>用于派生 AES-256 密钥，与机器标识共同绑定，文件权限仅当前用户可读。</td>
+      </tr>
+      <tr>
+        <td><code>audit\audit-YYYY-MM.jsonl</code></td>
+        <td>月度审计日志</td>
+        <td>每行一条 JSON；启动时清理超过 90 天的文件。</td>
+      </tr>
+      <tr>
+        <td><code>logs\redislens.log</code></td>
+        <td>本地运行日志</td>
+        <td>默认开启，包含连接重连等诊断信息，不记录密码或键值；可在设置中关闭。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <div class="callout-title">复制配置目录不等于可迁移凭据</div>
+  主密钥通过 HKDF 与当前机器的 Machine GUID 绑定。把 <code>config.json</code> 与
+  <code>key.bin</code> 复制到另一台机器后，密码无法解密，需要重新输入。
+  详见 <a href="security.html#credentials">安全与审计 · 凭据加密</a>。
+</div>
+
+<h2 id="first-connection">创建第一个连接</h2>
+
+<figure class="shot">
+  <img src="connect.png" alt="RedisLens 连接管理页面，包含实例列表与新建连接按钮" width="2858" height="1789" loading="lazy">
+  <figcaption>连接管理：按环境分组展示实例，右上角「新建连接」。</figcaption>
+</figure>
+
+<ol class="steps">
+  <li>
+    <span class="step-title">打开连接管理</span>
+    点击顶部实例切换器，选择「管理连接…」；或点击左侧导航的「连接管理」。
+  </li>
+  <li>
+    <span class="step-title">新建连接</span>
+    点击「新建连接」，填写名称（必填）与分组（如「开发」「测试」「生产」）。
+  </li>
+  <li>
+    <span class="step-title">填写实例信息</span>
+    模式保持「单机」，地址 <code>127.0.0.1</code>，端口 <code>6379</code>，数据库 <code>0</code>。
+    如果 Redis 启用了 ACL 或密码，填写用户名 / 密码；密码留空表示无密码。
+  </li>
+  <li>
+    <span class="step-title">测试连接</span>
+    点击「测试连接」。成功时会显示 Redis 版本、角色、模式、内存占用与键总数；
+    失败时显示具体错误，便于先修正配置再保存。
+  </li>
+  <li>
+    <span class="step-title">保存并连接</span>
+    点击「保存」，回到列表后点击该连接的「连接」。连接成功后会自动跳转到数据浏览页。
+  </li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">默认值</div>
+  端口默认 <code>6379</code>，DB 默认 <code>0</code>，模式默认单机；名称是唯一必填项。
+  同一实例可以登记多条连接（例如只读与可写各一条）。
+</div>
+
+<h2 id="status">连接状态与常用入口</h2>
+
+<p>连接列表和顶部状态栏共享同一套健康状态：</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>状态</th><th>显示</th><th>含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>已连接</td><td><span class="badge green">● ok</span></td><td>PING 正常，可按当前配置读写。</td></tr>
+      <tr><td>连接中</td><td><span class="badge">● connecting</span></td><td>首次打开或重连过程中。</td></tr>
+      <tr><td>断线</td><td><span class="badge red">● down</span></td><td>心跳失败，后台正在按退避策略重连。</td></tr>
+      <tr><td>未连接</td><td><span class="badge">● closed</span></td><td>连接未打开，功能页不可用。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<ul>
+  <li>打开连接后，应用每 <strong>5 秒</strong> PING 一次；断线时按退避间隔重试，最多 30 次，之后需手动重新连接。</li>
+  <li>打开连接会同时启动监控采样（默认每 10 秒读取一次 <code>INFO</code>）。</li>
+  <li>顶部可切换实例与 DB（0 – 15）；集群模式固定 DB 0。</li>
+  <li>右侧状态栏显示 <code>实例名 · host:port DBn · 模式 · 只读</code>，可随时确认当前操作目标。</li>
+</ul>
+
+<div class="callout danger">
+  <div class="callout-title">生产环境请先开启只读模式</div>
+  新建连接时开启「只读模式」后，写操作入口会被隐藏，后端也会拒绝写命令。
+  确认目标实例无误后，再编辑连接关闭只读。
+</div>
+
+<h2 id="next">下一步</h2>
+
+<div class="card-grid">
+  <a class="card" href="connections.html">
+    <h3>连接管理 →</h3>
+    <p>哨兵、集群、SSH 隧道、TLS 与只读模式的完整配置说明。</p>
+  </a>
+  <a class="card" href="browser.html">
+    <h3>数据浏览与编辑 →</h3>
+    <p>键空间树、SCAN 游标、值查看与编辑、TTL 管理。</p>
+  </a>
+  <a class="card" href="faq.html">
+    <h3>连接失败怎么办 →</h3>
+    <p>端口、防火墙、认证、TLS、SSH 与集群配置的排查清单。</p>
+  </a>
+</div>

@@ -49,6 +49,21 @@ RedisLens 是一款基于 **Go + Wails v2 + Vue 3** 的 Windows 桌面版 Redis 
   </tr>
 </table>
 
+## 在线文档
+
+完整的产品介绍与使用手册：**<https://flairamos.github.io/RedisLens/>**
+
+文档站是纯静态站点，源文件位于 `tools/docs-site/`，构建输出到 `docs/`：
+
+```bash
+# 修改 tools/docs-site/pages/*.html 后重新生成 docs/
+node tools/docs-site/build.mjs
+```
+
+GitHub Pages 部署方式：仓库 **Settings → Pages → Build and deployment**，
+Source 选择 **Deploy from a branch**，Branch 选择 `main`、Folder 选择 `/docs`，保存即可。
+`docs/.nojekyll` 会关闭 Jekyll 处理，确保静态资源按原样发布。
+
 ## 产品文档
 
 完整产品需求文档（PRD）：[`docs/RedisLens产品需求文档PRD.docx`](docs/RedisLens产品需求文档PRD.docx)
@@ -96,6 +111,8 @@ REDISLENS_TEST_ADDR=127.0.0.1:6379 go test ./internal/rds
 │   ├── audit/              # 审计日志（JSONL 月度轮转）
 │   └── security/           # 命令分类与危险命令拦截
 ├── frontend/               # Vue3 前端（三栏式布局）
+├── docs/                   # GitHub Pages 文档站（静态输出）
+├── tools/docs-site/        # 文档源片段与生成脚本
 ├── tools/genlogo/          # 品牌图标生成器
 └── build/                  # 构建产物（exe / NSIS 安装包）
 ```

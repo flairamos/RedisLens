@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>发布订阅 · RedisLens 文档</title>
+<meta name="description" content="订阅频道与模式、查看实时消息流、暂停接收与发布消息，并了解 Pub/Sub 的适用边界。">
+<meta name="theme-color" content="#dc382d">
+<link rel="canonical" href="https://flairamos.github.io/RedisLens/pubsub.html">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="assets/docs.css?v=1.0.0">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RedisLens 文档">
+<meta property="og:title" content="发布订阅 · RedisLens 文档">
+<meta property="og:description" content="订阅频道与模式、查看实时消息流、暂停接收与发布消息，并了解 Pub/Sub 的适用边界。">
+<meta property="og:url" content="https://flairamos.github.io/RedisLens/pubsub.html">
+<script>try{var t=localStorage.getItem("redislens-docs-theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="icon-btn menu-btn" type="button" data-menu-toggle aria-label="打开文档导航" aria-expanded="false" aria-controls="docs-sidebar">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+    <a class="brand" href="index.html" aria-label="RedisLens 文档首页">
+      <svg class="brand-logo" viewBox="0 0 132 36" fill="none" role="img" aria-label="RedisLens">
+        <g>
+          <circle cx="16" cy="15" r="10.5" fill="none" stroke="currentColor" stroke-width="3"></circle>
+          <path d="M16 8.2 L21.5 12.1 L16 16 L10.5 12.1 Z" fill="#DC382D"></path>
+          <path d="M16 12.6 L21.5 16.5 L16 20.4 L10.5 16.5 Z" fill="#C02C22"></path>
+          <path d="M16 17 L21.5 20.9 L16 24.8 L10.5 20.9 Z" fill="#A82620"></path>
+          <line x1="24.2" y1="23.2" x2="30" y2="29" stroke="#DC382D" stroke-width="4.2" stroke-linecap="round"></line>
+        </g>
+        <text x="38" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="currentColor" letter-spacing="0.2">Redis</text>
+        <text x="86" y="24" font-family="Inter, Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="#DC382D" letter-spacing="0.2">Lens</text>
+      </svg>
+      <span class="brand-badge">Docs</span>
+    </a>
+    <nav class="topnav" aria-label="站点导航">
+      <a href="index.html">文档</a>
+      <a href="getting-started.html">快速开始</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">下载</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <button class="search-trigger" type="button" data-search-open aria-label="搜索文档（Ctrl K）">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+      <span>搜索文档</span>
+      <span class="grow"></span>
+      <kbd>Ctrl K</kbd>
+    </button>
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/flairamos/RedisLens" aria-label="RedisLens GitHub 仓库" title="GitHub" rel="noopener">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.4 0C6.2 2.8 5.1 3.1 5.1 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 3.7 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>
+    </a>
+  </div>
+</header>
+<div class="backdrop" data-backdrop></div>
+<div class="layout">
+
+<aside class="sidebar" id="docs-sidebar" aria-label="文档导航">
+
+    <div class="nav-section">
+      <div class="nav-section-title">开始</div>
+      <a class="nav-link" href="index.html"><span class="nav-dot"></span>产品概览</a>
+      <a class="nav-link" href="getting-started.html"><span class="nav-dot"></span>安装与首次连接</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">使用指南</div>
+      <a class="nav-link" href="connections.html"><span class="nav-dot"></span>连接管理</a>
+      <a class="nav-link" href="browser.html"><span class="nav-dot"></span>数据浏览与编辑</a>
+      <a class="nav-link" href="dashboard.html"><span class="nav-dot"></span>监控仪表盘</a>
+      <a class="nav-link" href="console.html"><span class="nav-dot"></span>命令行控制台</a>
+      <a class="nav-link" href="analysis.html"><span class="nav-dot"></span>键空间分析</a>
+      <a class="nav-link" href="data-transfer.html"><span class="nav-dot"></span>导入导出与批量删除</a>
+      <a class="nav-link active" href="pubsub.html" aria-current="page"><span class="nav-dot"></span>发布订阅</a>
+      <a class="nav-link" href="topology.html"><span class="nav-dot"></span>实例拓扑</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">参考</div>
+      <a class="nav-link" href="security.html"><span class="nav-dot"></span>安全与审计</a>
+      <a class="nav-link" href="settings.html"><span class="nav-dot"></span>设置与快捷键</a>
+      <a class="nav-link" href="faq.html"><span class="nav-dot"></span>常见问题</a>
+      <a class="nav-link" href="development.html"><span class="nav-dot"></span>开发者指南</a>
+    </div>
+  <div class="sidebar-footer">
+    <div>RedisLens v1.0.0 · Apache-2.0</div>
+    <div><a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub 仓库</a> · <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a></div>
+  </div>
+</aside>
+  <div class="content-wrap">
+    <main class="content" id="main">
+      <nav class="breadcrumb" aria-label="面包屑">
+        <a href="index.html">文档</a><span class="sep">/</span><span>使用指南</span><span class="sep">/</span><span>发布订阅</span>
+      </nav>
+      <h1>发布订阅</h1>
+<p class="lead">
+  发布订阅页面用于观察频道消息与验证事件链路：可以同时订阅普通频道和模式频道，
+  查看实时消息流，也可以向指定频道发布消息。
+</p>
+
+<h2 id="subscribe">订阅频道</h2>
+
+<ul>
+  <li>「频道」填写一个或多个频道名，用英文或中文逗号分隔，例如 <code>news, chat:room:1</code>。</li>
+  <li>「模式订阅」填写 glob 模式，例如 <code>news.*, chat:*</code>；匹配到的消息会显示 <code>pmessage</code> 标记与原模式。</li>
+  <li>至少填写一个频道或模式后，「订阅」按钮才可用。</li>
+  <li>订阅中会显示「订阅中 · N 条」标记；点「退订」停止当前会话。</li>
+  <li>离开页面或关闭连接会自动退订，避免后台悬挂订阅。</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">订阅使用 SUBSCRIBE / PSUBSCRIBE</div>
+  页面只使用普通订阅与模式订阅。集群的 sharded pubsub（<code>SSUBSCRIBE</code> 等）
+  需要在命令行控制台手动执行。
+</div>
+
+<h2 id="stream">实时消息流</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>列</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>时间</td><td>消息到达客户端的时间（毫秒级）。</td></tr>
+      <tr><td>类型</td><td><code>message</code>、<code>pmessage</code>、<code>subscribe</code> 等。</td></tr>
+      <tr><td>频道</td><td>消息所属频道；模式订阅时还会显示匹配的模式。</td></tr>
+      <tr><td>负载</td><td>消息内容；非 UTF-8 或含 NUL 的负载以 Base64 斜体显示。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<ul>
+  <li>消息每 300 ms 批量刷新一次，避免高频消息导致界面卡顿。</li>
+  <li>界面最多保留最近 <strong>1000</strong> 条，超出后丢弃最旧的。</li>
+  <li>「暂停接收」只暂停界面追加，恢复后继续显示缓冲消息。</li>
+  <li>垃圾桶按钮清空当前消息列表，不影响订阅本身。</li>
+  <li>切换实例会清空消息列表，需要重新订阅。</li>
+</ul>
+
+<h2 id="publish">发布消息</h2>
+
+<ul>
+  <li>填写频道与负载，点「发布」；返回成功送达的订阅者数量（<code>PUBLISH</code> 的返回值）。</li>
+  <li>只读模式下「发布」按钮禁用，后端也会拒绝 <code>PUBLISH</code>。</li>
+  <li>发布不会持久化消息：没有在线订阅者时，消息直接丢弃。</li>
+</ul>
+
+<h2 id="keyspace">监听键空间事件</h2>
+
+<p>
+  Redis 的键空间通知（keyspace notifications）以 Pub/Sub 形式发出。启用后，
+  可以在本页订阅例如 <code>__keyevent@0__:expired</code> 来观察过期事件：
+</p>
+
+<pre><code># 在控制台（危险命令，需要二次确认）
+CONFIG SET notify-keyspace-events KEA</code></pre>
+
+<p>然后在「频道」中订阅：</p>
+
+<pre><code>__keyspace@0__:user:*
+__keyevent@0__:expired
+__keyevent@0__:del</code></pre>
+
+<div class="callout warn">
+  <div class="callout-title">键空间通知会增加额外开销</div>
+  <code>notify-keyspace-events</code> 打开后，Redis 会为每个事件发送消息。
+  生产环境建议只开启需要的类别（如仅 <code>Ex</code>），并在使用完毕后关闭。
+</div>
+
+<h2 id="limits">边界与注意事项</h2>
+
+<ul>
+  <li><strong>无历史</strong>：Pub/Sub 是即发即忘的，订阅之前的消息不可回放；需要持久化请使用 Stream。</li>
+  <li><strong>无确认</strong>：没有 ACK、重试或消费组语义，网络中断期间的消息会丢失。</li>
+  <li><strong>单会话</strong>：每页同时只有一个订阅会话；重新订阅会替换旧会话。</li>
+  <li><strong>不替代监控</strong>：消息数量只代表当前页面接收到的数量，不是实例的发布总量。</li>
+  <li>高频频道可能造成界面刷新压力；必要时用模式订阅收窄范围，或改用控制台导出到文件。</li>
+</ul>
+<div class="page-meta">
+  <span>最后更新：2026-11-26</span>
+  <span><a href="https://github.com/flairamos/RedisLens/edit/main/tools/docs-site/pages/09-pubsub.html" rel="noopener">在 GitHub 上编辑此页</a></span>
+  <span><a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">报告问题</a></span>
+</div>
+<nav class="pager" aria-label="文档翻页">
+  <a class="prev" href="data-transfer.html"><span class="dir">← 上一篇</span><span class="name">导入导出与批量删除</span></a>
+  <a class="next" href="topology.html"><span class="dir">下一篇 →</span><span class="name">实例拓扑</span></a>
+</nav>
+    </main>
+    <aside class="toc" aria-label="本页目录">
+      <div class="toc-title">本页目录</div>
+      <div data-toc></div>
+    </aside>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© 2026 flairamos · RedisLens 文档</span>
+    <span>Apache-2.0 License</span>
+    <span class="grow"></span>
+    <div class="footer-links">
+      <a href="https://github.com/flairamos/RedisLens" rel="noopener">GitHub</a>
+      <a href="https://github.com/flairamos/RedisLens/releases" rel="noopener">Releases</a>
+      <a href="https://github.com/flairamos/RedisLens/issues" rel="noopener">问题反馈</a>
+      <a href="RedisLens产品需求文档PRD.docx">产品 PRD</a>
+    </div>
+  </div>
+</footer>
+<script src="assets/search-index.js?v=1.0.0"></script>
+<script src="assets/docs.js?v=1.0.0"></script>
+</body>
+</html>

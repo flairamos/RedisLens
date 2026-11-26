@@ -1,0 +1,88 @@
+<p class="lead">
+  键空间分析把「哪些键最占资源、过期策略是否合理、慢在什么命令上」集中到一页。
+  大 Key 扫描使用渐进式 <code>SCAN</code>，不会一次性阻塞实例，并且可以随时停止。
+</p>
+
+<h2 id="bigkey">大 Key 扫描</h2>
+
+<p>点击右上角「开始大 Key 扫描」，后台任务会遍历当前 DB：</p>
+
+<ul>
+  <li>使用 <code>SCAN</code>（COUNT 200）渐进遍历，最多扫描 <strong>2,000,000</strong> 个键。</li>
+  <li>对每个键读取类型、<code>MEMORY USAGE</code>、TTL，并按类型读取元素数量（<code>LLEN</code> / <code>HLEN</code> / <code>SCARD</code> / <code>ZCARD</code> / <code>XLEN</code> / <code>STRLEN</code>）。</li>
+  <li>扫描进度每约 400 ms 推送一次，界面显示「已扫描 / 键总数」与进度条。</li>
+  <li>结果按<strong>内存占用</strong>与<strong>元素数量</strong>分别给出 Top 20。</li>
+  <li>可随时点「停止」；已扫描的部分仍会生成报告，但不会弹出完成提示。</li>
+</ul>
+
+<div class="callout warn">
+  <div class="callout-title">扫描不是零成本</div>
+  每个键需要多次命令往返。百万级键空间会产生可观的 CPU 与网络开销，
+  建议在低峰期执行，并优先对怀疑有问题的 DB 单独扫描。
+  只读模式下也可以执行扫描，因为它不写入数据。
+</div>
+
+<h3 id="bigkey-result">结果解读</h3>
+
+<div class="card-grid two">
+  <div class="card">
+    <h3>大 Key 排行（内存）</h3>
+    <p>按 <code>MEMORY USAGE</code> 排序，适合定位缓存体量大、可能触发淘汰或网络拥塞的键。</p>
+  </div>
+  <div class="card">
+    <h3>大 Key 排行（元素数）</h3>
+    <p>按元素数量排序，适合发现超大 List / Hash / Set / ZSet / Stream，这类键在删除或遍历时容易阻塞。</p>
+  </div>
+  <div class="card">
+    <h3>类型分布</h3>
+    <p>按类型统计已扫描键数量，展示前 8 类。可用于判断是否存在意外的数据类型混用。</p>
+  </div>
+  <div class="card">
+    <h3>TTL 分布</h3>
+    <p>按「永不过期 / ≤1 分钟 / ≤1 小时 / ≤1 天 / ≤7 天 / ≤30 天 / &gt;30 天」分桶；永不过期占比过高通常意味着内存会持续增长。</p>
+  </div>
+</div>
+
+<p>点击排行中的任意键，会跳转到数据浏览并打开该键的值。</p>
+
+<h2 id="slowlog">慢查询日志</h2>
+
+<p>
+  「慢查询日志」卡片读取当前实例的 <code>SLOWLOG GET 100</code>，展示最近 100 条记录：
+  发生时间、耗时、完整命令与客户端地址。
+</p>
+
+<ul>
+  <li>耗时超过 10 ms 的记录以红色显示，其余为琥珀色。</li>
+  <li>点击某条记录会尝试把命令中的第一个键参数作为目标，跳转到数据浏览。</li>
+  <li>列表在进入页面时自动加载，也可以点「刷新」获取最新记录。</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">慢查询由服务端配置决定</div>
+  Redis 只会记录超过 <code>slowlog-log-slower-than</code> 的命令，且 <code>slowlog-max-len</code>
+  限制保留条数。如果列表为空，先检查服务端是否关闭了慢查询日志或阈值设置过高。
+  修改这些参数需要 <code>CONFIG SET</code>（属于危险命令）。
+</div>
+
+<h2 id="cmdstats">热命令统计</h2>
+
+<p>
+  「热命令统计」读取 <code>INFO commandstats</code>，按调用次数排序，展示前 15 个命令及其平均耗时。
+  它反映的是<strong>整个实例</strong>自上次统计重置以来所有客户端的命令分布，不只是 RedisLens 自身。
+</p>
+
+<ul>
+  <li>调用次数高且平均耗时高的命令，通常是优化重点。</li>
+  <li><code>INFO commandstats</code> 不可用时，会自动回退为全量 <code>INFO</code> 解析。</li>
+  <li>Redis 重启或执行 <code>CONFIG RESETSTAT</code> 后统计会清零。</li>
+</ul>
+
+<h2 id="limits">使用建议</h2>
+
+<ul>
+  <li>先看「大 Key（内存）」与「永不过期」占比，再结合慢查询定位具体命令。</li>
+  <li>大 Key 扫描期间避免同时执行导出、批量删除等高负载操作。</li>
+  <li>扫描只覆盖当前连接的当前 DB；集群模式下 <code>SCAN</code> 通常只遍历其中一个节点，需要逐节点检查。</li>
+  <li>扫描会写入一条 <code>analysis</code> 类审计记录，包含扫描键数与耗时。</li>
+</ul>

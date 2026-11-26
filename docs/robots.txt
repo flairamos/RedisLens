@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://flairamos.github.io/RedisLens/sitemap.xml

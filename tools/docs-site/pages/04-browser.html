@@ -1,0 +1,306 @@
+<p class="lead">
+  数据浏览是 RedisLens 的核心工作区：左侧用键空间树定位前缀，中间用 SCAN 游标浏览键，
+  下方查看并编辑值，右侧展示键详情与 TTL。所有遍历都避免使用会阻塞实例的
+  <code>KEYS</code> 全量扫描。
+</p>
+
+<h2 id="layout">工作区布局</h2>
+
+<p>进入「数据浏览」后，界面分为四个区域：</p>
+
+<ul>
+  <li><strong>左侧键空间树</strong>：按 <code>:</code> 分隔的键前缀组织，懒加载子层级；点击前缀即按 <code>前缀:*</code> 过滤键列表。</li>
+  <li><strong>中间键列表</strong>：展示匹配模式下的键、类型、TTL 与内存大小，支持多选与批量操作。</li>
+  <li><strong>下方值查看器</strong>：根据类型渲染编辑器，支持行内修改与保存。</li>
+  <li><strong>右侧键详情</strong>：键名、类型、内部编码、大小、元素数、TTL，以及 TTL 编辑、重命名、删除入口。</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">当前实例与 DB 始终可见</div>
+  顶部实例切换器显示连接名与健康状态，状态栏显示
+  <code>host:port DBn · 模式 · 只读</code>。执行任何写操作前，先确认这两个位置。
+</div>
+
+<div class="callout warn">
+  <div class="callout-title">切换 DB 后请先刷新</div>
+  顶部的 DB 选择器会改变后续操作的目标库，但当前键列表与已打开的值不会自动清空。
+  切换 DB 后请先点键列表的刷新按钮，再查看或编辑值，避免把上一个 DB 的数据写到新 DB。
+</div>
+
+<h2 id="key-tree">键空间树</h2>
+
+<p>
+  键空间树把形如 <code>user:1001:profile</code> 的键按前缀拆成层级，适合在几十万键中快速缩小范围。
+</p>
+
+<ul>
+  <li>首次进入时加载根层级；展开节点时才按前缀请求子层级（懒加载）。</li>
+  <li>点击某个前缀，键列表的匹配模式会变为 <code>该前缀:*</code> 并立即刷新。</li>
+  <li>点击「全部键」恢复 <code>*</code>。</li>
+  <li>「刷新树」会清空已展开缓存并重新加载根层级，适用于键空间结构变化后。</li>
+  <li>切换实例或 DB 时，树会自动重置。</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">前缀分隔符</div>
+  树按冒号分层，因此 <code>order:2026:01</code> 会归入 <code>order</code> 分支。
+  如果业务键大量使用其他分隔符（如 <code>user.1001</code>），树的聚合效果会弱一些，
+  此时直接用键列表的模式筛选更高效。
+</div>
+
+<h2 id="key-list">键列表与 SCAN 分页</h2>
+
+<p>
+  键列表使用 <code>SCAN</code> 游标渐进遍历，不一次性拉取全部键。每次扫描的 COUNT
+  由设置中的 <a href="settings.html#data">SCAN COUNT</a> 决定，默认 500。
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>控件</th><th>行为</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>匹配模式</td>
+        <td>支持 Redis glob（<code>*</code>、<code>?</code>、<code>[abc]</code>）。输入后按回车生效；默认 <code>*</code>。</td>
+      </tr>
+      <tr>
+        <td>类型筛选</td>
+        <td>按 <code>string / hash / list / set / zset / stream / json</code> 过滤，选择后立即刷新。</td>
+      </tr>
+      <tr>
+        <td>刷新</td>
+        <td>从游标 0 重新扫描，并清空当前选择。</td>
+      </tr>
+      <tr>
+        <td>滚动加载</td>
+        <td>列表使用虚拟滚动渲染；底部显示已加载键数与当前游标，点「加载更多」继续下一页。</td>
+      </tr>
+      <tr>
+        <td>多选</td>
+        <td>左侧复选框支持单选、全选当前已加载的键，用于批量续期、移除 TTL 与删除。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="columns">列表字段</h3>
+
+<ul>
+  <li><strong>键名</strong>：等宽字体展示，点击载入值；当前键以红色高亮。</li>
+  <li><strong>类型</strong>：带颜色的类型徽标，包含 RedisJSON 的 <span class="type-badge type-json">JSON</span>。</li>
+  <li><strong>TTL</strong>：<code>永久</code> 表示无过期；剩余不足 60 秒时以琥珀色提示；<code>0s</code> 表示即将过期。</li>
+  <li><strong>大小</strong>：<code>MEMORY USAGE</code> 结果，未知时显示 <code>-</code>。</li>
+</ul>
+
+<div class="callout warn">
+  <div class="callout-title">SCAN 不保证快照一致性</div>
+  <code>SCAN</code> 是增量遍历：遍历期间新增或删除的键可能被返回、重复返回或漏掉。
+  它适合浏览与巡检，不适合需要严格快照的一次性导出；导出逻辑同样基于扫描，
+  因此导出期间应避免大量写入。
+</div>
+
+<h2 id="global-search">全局搜索（Ctrl+K）</h2>
+
+<p>
+  按 <kbd>Ctrl</kbd> + <kbd>K</kbd> 打开全局搜索，可同时检索功能模块、键名和命令：
+</p>
+
+<ul>
+  <li>输入模块名（如「监控」「审计」）直接跳转对应页面。</li>
+  <li>输入键名片段，会以 <code>*片段*</code> 做一次 SCAN（最多 30 条），回车打开该键。</li>
+  <li>输入命令名（如 <code>HSET</code>），回车跳到控制台并填入命令前缀。</li>
+  <li>方向键选择，<kbd>Enter</kbd> 打开，<kbd>Esc</kbd> 关闭。</li>
+</ul>
+
+<h2 id="value">查看与编辑值</h2>
+
+<p>
+  选中键后，值查看器顶部显示类型、键名、元素数 / 字节数、内部编码与刷新按钮。
+  不同数据类型的编辑方式如下：
+</p>
+
+<div class="table-wrap wide">
+  <table>
+    <thead>
+      <tr><th>类型</th><th>查看</th><th>编辑操作</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="type-badge type-string">String</span></td>
+        <td>文本编辑区；合法 JSON 可切换「格式化 / 原始」。</td>
+        <td>
+          直接修改文本后保存。保存前会弹出 Diff 预览；<code>SET</code> 后自动恢复原 TTL。
+          非 UTF-8 内容以 Base64 展示，保存时按 Base64 解码写回。
+        </td>
+      </tr>
+      <tr>
+        <td><span class="type-badge type-hash">Hash</span></td>
+        <td>字段与值表格，按字段名排序；显示完整字段集合。</td>
+        <td>
+          「+ 字段」新增；双击值行内编辑后回车保存；行尾删除按钮删除字段。
+        </td>
+      </tr>
+      <tr>
+        <td><span class="type-badge type-list">List</span></td>
+        <td>按下标展示（首次加载前 500 个元素），支持下标定位。</td>
+        <td>
+          「左侧插入 / 右侧追加」；双击元素编辑；删除元素；
+          下标定位仅在已加载范围内有效。
+        </td>
+      </tr>
+      <tr>
+        <td><span class="type-badge type-set">Set</span></td>
+        <td>成员列表（首次加载 500 个），按字典序展示。</td>
+        <td>
+          「+ 成员」新增，一行一个成员可批量添加；行尾删除成员。
+        </td>
+      </tr>
+      <tr>
+        <td><span class="type-badge type-zset">ZSet</span></td>
+        <td>按排名展示前 500 个成员与分数。</td>
+        <td>
+          「+ 成员」添加成员与分数；双击分数行内修改；行尾删除成员。
+        </td>
+      </tr>
+      <tr>
+        <td><span class="type-badge type-stream">Stream</span></td>
+        <td>前 200 条消息的 ID 与字段键值对。</td>
+        <td>
+          「+ 消息」新增，ID 留空由服务端生成（<code>*</code>）；
+          字段按「每行 <code>key=value</code>」填写；行尾删除消息。
+        </td>
+      </tr>
+      <tr>
+        <td><span class="type-badge type-json">JSON</span></td>
+        <td>RedisJSON 文档，格式化 / 原始视图切换。</td>
+        <td>
+          编辑整个 JSON 文档后保存到根路径 <code>$</code>。需服务端加载 RedisJSON；
+          非法 JSON 会被服务端拒绝并返回错误。
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <div class="callout-title">集合类型是「分页视图」，不是全量视图</div>
+  List / Set / ZSet 首次只加载前 500 个元素，Stream 只加载前 200 条；
+  Hash 使用 <code>HGETALL</code> 返回全部字段，超大 Hash 可能带来明显开销。
+  超大集合建议配合控制台按需读取。
+</div>
+
+<h3 id="binary">二进制值</h3>
+
+<p>
+  当字符串、Hash 字段或 List 元素不是合法 UTF-8，或包含 NUL 字节时，值查看器会显示
+  <span class="badge red">二进制（Base64 展示）</span>，并以 Base64 文本呈现。
+  编辑后保存时按 Base64 解码写回；请确保修改后的内容仍是合法 Base64。
+</p>
+
+<h2 id="diff">保存前 Diff 预览</h2>
+
+<p>
+  编辑 String 或 JSON 并点击「保存」时，会先弹出左右对照的变更预览：
+  左侧为当前值，右侧为即将写入的新值。确认后才真正执行写入，取消则保留编辑内容。
+</p>
+
+<div class="callout tip">
+  <div class="callout-title">Diff 只覆盖字符串类值</div>
+  Hash、List、Set、ZSet、Stream 的行内编辑是逐条立即写入的，不会经过 Diff 确认。
+  对生产数据做批量修改时请格外小心。
+</div>
+
+<h2 id="ttl">TTL 管理</h2>
+
+<h3 id="ttl-single">单个键</h3>
+
+<p>右侧键详情提供 TTL 编辑：</p>
+
+<ul>
+  <li>输入秒数并点「续期」，会执行 <code>PEXPIRE</code>。</li>
+  <li>点「永久」会移除过期时间（<code>PERSIST</code>），键变为永久存活。</li>
+  <li>TTL 显示为 <code>永久</code> 表示 <code>-1</code>；<code>不存在</code> 表示键已不存在。</li>
+</ul>
+
+<h3 id="ttl-batch">批量操作</h3>
+
+<p>在键列表中勾选多个键后，工具栏提供：</p>
+
+<ul>
+  <li><strong>批量续期</strong>：输入秒数，对所有选中键执行 <code>PEXPIRE</code>。</li>
+  <li><strong>移除 TTL</strong>：二次确认后对所有选中键执行 <code>PERSIST</code>。</li>
+  <li>两个操作都会写入审计日志（<code>key_edit</code>），移除 TTL 记为 <code>warn</code> 级别。</li>
+</ul>
+
+<h2 id="create">新建键</h2>
+
+<p>工具栏「新建键」打开创建对话框，字段包括键名、类型、初始值与 TTL：</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>类型</th><th>初始值如何写入</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>string</td><td>作为字符串值写入。</td></tr>
+      <tr><td>hash</td><td>初始值写入字段 <code>field1</code>。</td></tr>
+      <tr><td>list</td><td>初始值作为第一个元素追加到右侧。</td></tr>
+      <tr><td>set</td><td>初始值作为第一个成员。</td></tr>
+      <tr><td>zset</td><td>初始值作为成员，分数固定为 1。</td></tr>
+      <tr><td>stream</td><td>初始值写入字段 <code>field1</code> 的第一条消息。</td></tr>
+      <tr><td>json</td><td>初始值必须是合法 JSON 文档，写入根路径。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<ul>
+  <li>TTL 单位为毫秒；留空表示永久。</li>
+  <li>创建成功后列表自动刷新并打开该键。</li>
+  <li>只读模式下「新建键」按钮禁用，后端也会拒绝创建。</li>
+</ul>
+
+<h2 id="rename-delete">重命名与删除</h2>
+
+<h3 id="rename">重命名</h3>
+
+<p>
+  键详情中的「重命名」执行 Redis <code>RENAME</code>。如果目标键已存在，
+  <strong>会被直接覆盖</strong>，且没有额外确认。重命名前请确认目标键名。
+</p>
+
+<h3 id="delete">删除与回收站</h3>
+
+<ul>
+  <li>单个键删除、批量删除都会先 <code>DUMP</code> 备份到当前连接的回收站，再执行 <code>UNLINK</code>。</li>
+  <li>删除前会弹出确认框；批量删除显示选中数量。</li>
+  <li>删除成功后可到 <a href="security.html#recycle">回收站</a> 恢复；回收站为内存态，容量 100 条 / 64 MB。</li>
+  <li>删除与恢复都会写入审计日志（<code>key_delete</code>）。</li>
+</ul>
+
+<h2 id="readonly">只读模式下的行为</h2>
+
+<p>
+  连接开启只读后，以下入口会被禁用或隐藏：新建键、批量 TTL、移除 TTL、批量删除、
+  值编辑、重命名、删除键。后端在执行写操作前还会再次校验连接状态，
+  即使绕过界面调用也会被拒绝。
+</p>
+
+<h2 id="limits">已知边界</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>限制</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>List / Set / ZSet 首页</td><td>500 个元素；更大集合需用控制台或分批读取。</td></tr>
+      <tr><td>Stream 首页</td><td>200 条消息。</td></tr>
+      <tr><td>Hash</td><td><code>HGETALL</code> 全量读取，超大 Hash 可能较慢。</td></tr>
+      <tr><td>键数量</td><td>SCAN 分页与虚拟滚动可承载十万级键，但全量遍历仍取决于实例性能。</td></tr>
+      <tr><td>键空间树</td><td>按 <code>:</code> 分隔；分隔符不统一时聚合效果有限。</td></tr>
+      <tr><td>JSON</td><td>依赖服务端 RedisJSON；路径固定为根 <code>$</code>。</td></tr>
+    </tbody>
+  </table>
+</div>
